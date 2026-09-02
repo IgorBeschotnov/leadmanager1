@@ -1,0 +1,72 @@
+{% extends "manager/base.html" %}
+{% block title %}Шаблони КП{% endblock %}
+{% block page_title %}Шаблони комерційних пропозицій{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  {% for key, tpl in full_templates.items %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">{{ tpl.name }}</span>
+        <span class="badge bg-light text-dark border">{{ tpl.channel_hint }}</span>
+      </div>
+      <div class="card-body">
+        <div class="template-preview small" style="max-height:220px">{{ tpl.body }}</div>
+      </div>
+      <div class="card-footer bg-white border-0 pt-0">
+        <button class="btn btn-sm btn-outline-primary w-100"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#previewModal"
+                data-key="{{ key }}"
+                data-name="{{ tpl.name }}"
+                data-body="{{ tpl.body|escapejs }}">
+          Відкрити / скопіювати
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">Шаблон</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="template-preview" id="modalBody" style="max-height:50vh"></div>
+        <p class="small text-muted mt-2 mb-0">
+          Плейсхолдери: {company_name}, {contact_name}, {operator_name}, {city}.
+          Щоб отримати готовий текст з підставленими даними — відкрийте картку ліда і оберіть шаблон там.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" id="modalCopyBtn">
+          <i class="bi bi-clipboard"></i> Копіювати текст
+        </button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const modal = document.getElementById('previewModal');
+modal.addEventListener('show.bs.modal', event => {
+  const btn = event.relatedTarget;
+  document.getElementById('modalTitle').textContent = btn.dataset.name;
+  document.getElementById('modalBody').textContent = btn.dataset.body;
+  window._modalText = btn.dataset.body;
+});
+document.getElementById('modalCopyBtn').addEventListener('click', () => {
+  if (window._modalText) copyText(window._modalText);
+});
+</script>
+{% endblock %}

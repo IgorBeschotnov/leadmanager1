@@ -1,0 +1,71 @@
+{% extends "manager/base.html" %}
+{% block title %}Звіти{% endblock %}
+{% block page_title %}Звіти{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold">Зведення по операторах (останні 30 днів)</div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Оператор</th>
+              <th class="text-center">Дзвінків</th>
+              <th class="text-center">Успіх</th>
+              <th class="text-center">Відмова</th>
+              <th class="text-center">Перезвон</th>
+              <th class="text-center">Невірний</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in operators_stats %}
+            <tr>
+              <td>
+                <a href="{% url 'manager:operator_detail' row.operator_id %}">
+                  {{ row.operator__first_name }} {{ row.operator__last_name }}
+                  <span class="text-muted small">({{ row.operator__username }})</span>
+                </a>
+              </td>
+              <td class="text-center fw-semibold">{{ row.total }}</td>
+              <td class="text-center text-success">{{ row.success }}</td>
+              <td class="text-center text-danger">{{ row.refusal }}</td>
+              <td class="text-center text-warning">{{ row.call_back }}</td>
+              <td class="text-center text-muted">{{ row.wrong }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-4">Немає даних</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-white fw-semibold">Стрічка останніх 40 дзвінків</div>
+  <div class="list-group list-group-flush">
+    {% for call in recent_calls %}
+    <div class="list-group-item list-group-item-action" onclick="location.href='{% url 'manager:lead_detail' call.company_id %}'" style="cursor:pointer">
+      <div class="d-flex justify-content-between">
+        <div>
+          <span class="fw-semibold">{{ call.company.name }}</span>
+          <span class="text-muted small ms-2">{{ call.operator.name|default:"—" }}</span>
+        </div>
+        <div class="text-end">
+          <span class="badge bg-light text-dark">{{ call.get_result_display }}</span>
+          <div class="small text-muted">{{ call.created_at|date:"d.m H:i" }}</div>
+        </div>
+      </div>
+      {% if call.comment %}
+        <div class="small text-muted mt-1 text-truncate">{{ call.comment|truncatechars:120 }}</div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="list-group-item text-muted text-center py-4">Поки немає дзвінків</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

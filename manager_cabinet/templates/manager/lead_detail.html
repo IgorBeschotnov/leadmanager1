@@ -1,0 +1,205 @@
+{% extends "manager/base.html" %}
+{% block title %}{{ lead.name }}{% endblock %}
+{% block page_title %}{{ lead.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Назад
+  </a>
+</div>
+
+<div class="row g-3">
+  <!-- Left: main info -->
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+          <div>
+            <h5 class="mb-1">{{ lead.name }}</h5>
+            <span class="badge badge-stage stage-{{ lead.stage }}">{{ lead.get_stage_display }}</span>
+            {% if lead.preferred_channel %}
+              <span class="badge bg-secondary ms-1">{{ lead.preferred_channel }}</span>
+            {% endif %}
+          </div>
+          <div class="text-muted small">
+            Оновлено: {{ lead.updated_at|date:"d.m.Y H:i" }}
+          </div>
+        </div>
+
+        <dl class="row mb-0 small">
+          <dt class="col-sm-4 text-muted">Місто / регіон</dt>
+          <dd class="col-sm-8">{{ lead.city|default:"—" }}{% if lead.region %}, {{ lead.region }}{% endif %}</dd>
+
+          <dt class="col-sm-4 text-muted">Телефони</dt>
+          <dd class="col-sm-8">{{ lead.phones|default:"—" }}</dd>
+
+          <dt class="col-sm-4 text-muted">Email</dt>
+          <dd class="col-sm-8">{{ lead.emails|default:"—" }}</dd>
+
+          <dt class="col-sm-4 text-muted">Сайт</dt>
+          <dd class="col-sm-8">
+            {% if lead.website %}<a href="{{ lead.website }}" target="_blank" rel="noopener">{{ lead.website }}</a>{% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-sm-4 text-muted">Контактна особа</dt>
+          <dd class="col-sm-8">{{ lead.contact_person|default:"—" }}</dd>
+
+          <dt class="col-sm-4 text-muted">Оператор</dt>
+          <dd class="col-sm-8">
+            {% if lead.assigned_to %}
+              <a href="{% url 'manager:operator_detail' lead.assigned_to.pk %}">{{ lead.assigned_to.name }}</a>
+            {% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-sm-4 text-muted">Джерело</dt>
+          <dd class="col-sm-8">{{ lead.source|default:"—" }}</dd>
+
+          <dt class="col-sm-4 text-muted">Категорії</dt>
+          <dd class="col-sm-8">
+            {% for cat in lead.categories.all %}
+              <span class="badge bg-light text-dark border">{{ cat.name }}</span>
+            {% empty %}—{% endfor %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Internal notes -->
+    <div class="card mb-3">
+      <div class="card-header bg-white fw-semibold">Внутрішні нотатки</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save_notes">
+          <textarea name="internal_notes" class="form-control form-control-sm" rows="4">{{ lead.internal_notes|default:"" }}</textarea>
+          <button type="submit" class="btn btn-sm btn-primary mt-2">Зберегти нотатки</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Call history -->
+    <div class="card">
+      <div class="card-header bg-white fw-semibold">Історія дзвінків / дій</div>
+      <div class="list-group list-group-flush">
+        {% for log in call_logs %}
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between small text-muted mb-1">
+            <span>{{ log.created_at|date:"d.m.Y H:i" }} · {{ log.operator.name|default:"—" }}</span>
+            <span class="badge bg-light text-dark">{{ log.get_result_display }}</span>
+          </div>
+          {% if log.comment %}
+            <div class="small" style="white-space: pre-wrap;">{{ log.comment }}</div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div class="list-group-item text-muted small">Поки немає записів</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: actions + templates -->
+  <div class="col-lg-5">
+    {% if lead.stage == "letter_sent" and not lead.is_sent_by_manager %}
+    <!-- Mark as sent -->
+    <div class="card mb-3 border-warning">
+      <div class="card-header bg-warning-subtle fw-semibold">
+        <i class="bi bi-send"></i> Відмітити відправленим
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="mark_sent">
+          <div class="mb-2">
+            <label class="form-label small">Сума пожертви (грн)</label>
+            <input type="text" name="donation_amount" class="form-control form-control-sm" placeholder="наприклад 5000">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Вага посилки (кг)</label>
+            <input type="text" name="package_weight" class="form-control form-control-sm" placeholder="наприклад 12">
+          </div>
+          {% if attachments %}
+          <div class="mb-3">
+            <label class="form-label small">Прикріпити файли</label>
+            {% for f in attachments %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="attachments" value="{{ f.name }}" id="att_{{ forloop.counter }}">
+              <label class="form-check-label small" for="att_{{ forloop.counter }}">{{ f.name }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <button type="submit" class="btn btn-warning w-100">
+            <i class="bi bi-check2-circle"></i> КП відправлено (+3 дні на перезвон)
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Templates -->
+    <div class="card mb-3">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-file-earmark-text"></i> Шаблони КП</span>
+        <a href="{% url 'manager:templates' %}" class="btn btn-sm btn-outline-secondary">Всі шаблони</a>
+      </div>
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          {% for t in templates %}
+          <button type="button"
+                  class="btn btn-outline-primary btn-sm text-start template-btn"
+                  data-key="{{ t.key }}"
+                  data-company="{{ lead.pk }}">
+            <div class="fw-semibold">{{ t.name }}</div>
+            <div class="small text-muted">{{ t.channel_hint }}</div>
+          </button>
+          {% endfor %}
+        </div>
+
+        <div id="previewBox" class="mt-3 d-none">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small fw-semibold" id="previewTitle">Текст</span>
+            <button type="button" class="btn btn-sm btn-success" id="copyBtn">
+              <i class="bi bi-clipboard"></i> Копіювати
+            </button>
+          </div>
+          <div class="template-preview" id="previewText"></div>
+          <form method="post" class="mt-2" id="logForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="generate_and_log">
+            <input type="hidden" name="template_key" id="logTemplateKey">
+            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+              <i class="bi bi-journal-plus"></i> Додати цей текст в історію ліда
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.template-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const key = btn.dataset.key;
+    const companyId = btn.dataset.company;
+    const resp = await fetch(`{% url 'manager:template_preview' 'PLACEHOLDER' %}`.replace('PLACEHOLDER', key) + `?company_id=${companyId}`);
+    const data = await resp.json();
+    if (data.text) {
+      document.getElementById('previewBox').classList.remove('d-none');
+      document.getElementById('previewTitle').textContent = data.name;
+      document.getElementById('previewText').textContent = data.text;
+      document.getElementById('logTemplateKey').value = key;
+      window._lastTemplateText = data.text;
+    }
+  });
+});
+
+document.getElementById('copyBtn')?.addEventListener('click', () => {
+  if (window._lastTemplateText) copyText(window._lastTemplateText);
+});
+</script>
+{% endblock %}

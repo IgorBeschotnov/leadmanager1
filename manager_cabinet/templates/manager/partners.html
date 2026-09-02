@@ -1,0 +1,42 @@
+{% extends "manager/base.html" %}
+{% block title %}Партнери{% endblock %}
+{% block page_title %}Партнери{% endblock %}
+
+{% block content %}
+<form class="mb-3" method="get">
+  <div class="input-group input-group-sm" style="max-width:320px">
+    <input type="search" name="q" value="{{ search }}" class="form-control" placeholder="Пошук компанії / міста">
+    <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
+  </div>
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Компанія</th>
+          <th class="d-none d-md-table-cell">Місто</th>
+          <th class="d-none d-lg-table-cell">Оператор</th>
+          <th>Дата</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in leads %}
+        <tr class="lead-row" onclick="location.href='{% url 'manager:lead_detail' lead.pk %}'">
+          <td>
+            <div class="fw-semibold">{{ lead.name }}</div>
+            <div class="small text-muted d-md-none">{{ lead.city|default:"" }}</div>
+          </td>
+          <td class="d-none d-md-table-cell">{{ lead.city|default:"—" }}</td>
+          <td class="d-none d-lg-table-cell">{{ lead.assigned_to.name|default:"—" }}</td>
+          <td class="small text-muted">{{ lead.updated_at|date:"d.m.Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-4">Поки немає партнерів</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

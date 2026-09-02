@@ -1,0 +1,27 @@
+{% extends "manager/base.html" %}
+{% block title %}Оператори{% endblock %}
+{% block page_title %}Оператори{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  {% for op in operators %}
+  <div class="col-sm-6 col-lg-4">
+    <a href="{% url 'manager:operator_detail' op.pk %}" class="card text-decoration-none text-dark h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width:48px;height:48px;font-size:1.25rem">
+          <i class="bi bi-person"></i>
+        </div>
+        <div>
+          <div class="fw-semibold">{{ op.name }}</div>
+          <div class="small text-muted">{{ op.team.name|default:"Без команди" }}</div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="alert alert-light border text-center">Немає операторів з capability «operator»</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
