@@ -1,6 +1,58 @@
+# --- Python ---
 __pycache__/
-*.pyc
-db.sqlite3
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# --- Virtual env ---
 venv/
-.env
+.venv/
+env/
+
+# --- Django ---
 *.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# --- Secrets & env ---
+.env
+.env.*
+!.env.example
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Data & imports (великі Excel не в git) ---
+data/
+*.xlsx
+*.xls
+!docs/**/*.xlsx
+
+# --- Temp / archives ---
+*.zip
+*.tar.gz
+tmp/
+temp/
+
+# --- Coverage / tests ---
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
