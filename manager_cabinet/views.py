@@ -8,8 +8,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
 
-from leads.models import Company, CallLog  # предполагаем app 'leads'
-from accounts.models import User  # кастомный User
+from leads.models import Company, CallLog
+from accounts.models import User
 from .letter_templates import (
     TEMPLATES, render_template, get_templates_list, get_attachment_files
 )
@@ -36,7 +36,7 @@ def _filter_by_team(qs, user):
         return qs
     if getattr(user, "team_id", None):
         return qs.filter(Q(team=user.team) | Q(team__isnull=True))
-    return qs.none()  # без команди і не owner — нічого
+    return qs.none()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ def tasks(request):
         Company.objects
         .filter(stage="letter_sent", is_sent_by_manager=False)
         .select_related("assigned_to", "team")
-        .order_by("updated_at")  # давность
+        .order_by("updated_at")
     )
     qs = _filter_by_team(qs, request.user)
 
@@ -71,7 +71,6 @@ def tasks(request):
 # ─────────────────────────────────────────────────────────────
 @manager_required
 def reports(request):
-    # Сводка по операторам (последние 30 дней для примера)
     since = timezone.now() - timedelta(days=30)
 
     operators_stats = (
@@ -125,7 +124,7 @@ def database(request):
 
     context = {
         "page": "database",
-        "leads": qs[:200],  # защита от огромных списков
+        "leads": qs[:200],
         "search": search,
         "stage_filter": stage_filter,
     }
@@ -171,30 +170,25 @@ def lead_detail(request, pk):
     if request.method == "POST":
         action = request.POST.get("action")
 
+        # --- Сохранить внутренние заметки ---
         if action == "save_notes":
             lead.internal_notes = request.POST.get("internal_notes", "")
             lead.save(update_fields=["internal_notes", "updated_at"])
             return redirect("manager:lead_detail", pk=pk)
 
+        # --- Отметить КП как отправленное (без суммы и веса) ---
         if action == "mark_sent":
             lead.is_sent_by_manager = True
             lead.callback_date = timezone.now() + timedelta(days=3)
-            # опционально сумма / вес
-            donation = request.POST.get("donation_amount", "").strip()
-            weight = request.POST.get("package_weight", "").strip()
-            attached = request.POST.getlist("attachments")  # імена файлів
-            note_parts = []
-            if donation:
-                note_parts.append(f"Сума: {donation}")
-            if weight:
-                note_parts.append(f"Вага: {weight}")
+
+            attached = request.POST.getlist("attachments")
+            extra = ""
             if attached:
-                note_parts.append("Файли: " + ", ".join(attached))
-            extra = " | ".join(note_parts) if note_parts else ""
-            if extra:
+                extra = "Файли: " + ", ".join(attached)
                 lead.internal_notes = (lead.internal_notes or "") + f"\n[КП] {extra}"
+
             lead.save()
-            # лог
+
             CallLog.objects.create(
                 company=lead,
                 operator=request.user,
@@ -203,17 +197,43 @@ def lead_detail(request, pk):
             )
             return redirect("manager:tasks")
 
+        # --- Зафиксировать помощь от партнёра (только для stage=success) ---
+        if action == "record_help":
+            if lead.stage != "success":
+                return redirect("manager:lead_detail", pk=pk)
+
+            donation = request.POST.get("donation_amount", "").strip()
+            weight = request.POST.get("package_weight", "").strip()
+
+            note_parts = []
+            if donation:
+                note_parts.append(f"Сума допомоги: {donation} грн")
+            if weight:
+                note_parts.append(f"Вага: {weight} кг")
+
+            if note_parts:
+                extra = " | ".join(note_parts)
+                lead.internal_notes = (lead.internal_notes or "") + f"\n[Допомога] {extra}"
+                lead.save(update_fields=["internal_notes", "updated_at"])
+
+                CallLog.objects.create(
+                    company=lead,
+                    operator=request.user,
+                    result="success",
+                    comment=f"Зафіксовано допомогу партнера: {extra}",
+                )
+            return redirect("manager:lead_detail", pk=pk)
+
+        # --- Сгенерировать текст шаблона и записать в историю ---
         if action == "generate_and_log":
             template_key = request.POST.get("template_key")
             text = render_template(template_key, lead, operator_name=request.user.name)
-            # сохраняем в историю
             CallLog.objects.create(
                 company=lead,
                 operator=request.user,
                 result="success",
                 comment=f"[Шаблон: {TEMPLATES.get(template_key, {}).get('name', template_key)}]\n\n{text}",
             )
-            # возвращаем текст для копирования (AJAX или redirect с параметром)
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 return JsonResponse({"text": text, "ok": True})
             return redirect("manager:lead_detail", pk=pk)
@@ -229,11 +249,10 @@ def lead_detail(request, pk):
 
 
 # ─────────────────────────────────────────────────────────────
-# Окно / страница шаблонов
+# Страница шаблонов
 # ─────────────────────────────────────────────────────────────
 @manager_required
 def templates_list(request):
-    """Отдельная страница со всеми шаблонами + предпросмотр."""
     context = {
         "page": "templates",
         "templates": get_templates_list(),
@@ -245,7 +264,6 @@ def templates_list(request):
 @manager_required
 @require_GET
 def template_preview(request, key):
-    """AJAX: вернуть готовый текст шаблона для конкретной компании."""
     company_id = request.GET.get("company_id")
     if not company_id:
         return JsonResponse({"error": "company_id required"}, status=400)
@@ -294,7 +312,7 @@ def operator_detail(request, pk):
 
 
 # ─────────────────────────────────────────────────────────────
-# Список операторов (простая страница)
+# Список операторов
 # ─────────────────────────────────────────────────────────────
 @manager_required
 def operators_list(request):

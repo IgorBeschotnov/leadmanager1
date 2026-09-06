@@ -10,7 +10,7 @@
 </div>
 
 <div class="row g-3">
-  <!-- Left: main info -->
+  <!-- Левая колонка: основная информация -->
   <div class="col-lg-7">
     <div class="card mb-3">
       <div class="card-body">
@@ -65,7 +65,7 @@
       </div>
     </div>
 
-    <!-- Internal notes -->
+    <!-- Внутренние заметки -->
     <div class="card mb-3">
       <div class="card-header bg-white fw-semibold">Внутрішні нотатки</div>
       <div class="card-body">
@@ -78,7 +78,7 @@
       </div>
     </div>
 
-    <!-- Call history -->
+    <!-- История звонков / действий -->
     <div class="card">
       <div class="card-header bg-white fw-semibold">Історія дзвінків / дій</div>
       <div class="list-group list-group-flush">
@@ -99,10 +99,11 @@
     </div>
   </div>
 
-  <!-- Right: actions + templates -->
+  <!-- Правая колонка: действия + шаблоны -->
   <div class="col-lg-5">
+
+    <!-- Блок: Отметить КП отправленным (только letter_sent и ещё не отправлено) -->
     {% if lead.stage == "letter_sent" and not lead.is_sent_by_manager %}
-    <!-- Mark as sent -->
     <div class="card mb-3 border-warning">
       <div class="card-header bg-warning-subtle fw-semibold">
         <i class="bi bi-send"></i> Відмітити відправленим
@@ -111,14 +112,7 @@
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="action" value="mark_sent">
-          <div class="mb-2">
-            <label class="form-label small">Сума пожертви (грн)</label>
-            <input type="text" name="donation_amount" class="form-control form-control-sm" placeholder="наприклад 5000">
-          </div>
-          <div class="mb-3">
-            <label class="form-label small">Вага посилки (кг)</label>
-            <input type="text" name="package_weight" class="form-control form-control-sm" placeholder="наприклад 12">
-          </div>
+
           {% if attachments %}
           <div class="mb-3">
             <label class="form-label small">Прикріпити файли</label>
@@ -130,6 +124,7 @@
             {% endfor %}
           </div>
           {% endif %}
+
           <button type="submit" class="btn btn-warning w-100">
             <i class="bi bi-check2-circle"></i> КП відправлено (+3 дні на перезвон)
           </button>
@@ -138,7 +133,35 @@
     </div>
     {% endif %}
 
-    <!-- Templates -->
+    <!-- Блок: Допомога партнера (только когда stage = success) -->
+    {% if lead.stage == "success" %}
+    <div class="card mb-3 border-success">
+      <div class="card-header bg-success-subtle fw-semibold">
+        <i class="bi bi-heart"></i> Допомога партнера
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="record_help">
+
+          <div class="mb-2">
+            <label class="form-label small">Сума допомоги (грн)</label>
+            <input type="text" name="donation_amount" class="form-control form-control-sm" placeholder="наприклад 5000">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Вага (кг)</label>
+            <input type="text" name="package_weight" class="form-control form-control-sm" placeholder="наприклад 12">
+          </div>
+
+          <button type="submit" class="btn btn-success w-100">
+            <i class="bi bi-check2-circle"></i> Зафіксувати допомогу
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Шаблоны КП -->
     <div class="card mb-3">
       <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <span class="fw-semibold"><i class="bi bi-file-earmark-text"></i> Шаблони КП</span>
