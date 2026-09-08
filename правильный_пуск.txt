@@ -1,0 +1,4 @@
+cd D:\projects
+.\.venv\Scripts\Activate.ps1
+cd leadmanager1
+python manage.py runserver

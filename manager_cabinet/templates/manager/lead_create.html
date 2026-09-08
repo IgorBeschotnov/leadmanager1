@@ -1,0 +1,101 @@
+{% extends "manager/base.html" %}
+{% block title %}Новий лід{% endblock %}
+{% block page_title %}Новий лід{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{% url 'manager:tasks' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Назад
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-plus-circle"></i> Створити картку ліда
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Назва компанії <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required placeholder="ТОВ «Приклад»">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Статус</label>
+              <select name="stage" class="form-select">
+                <option value="in_progress">В роботі</option>
+                <option value="letter_sent">Чекає відправки КП</option>
+                <option value="success">Партнер</option>
+                <option value="refusal">Відмова</option>
+                <option value="invalid">Невалідний</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Телефони</label>
+              <input type="text" name="phones" class="form-control" placeholder="+380..., +380...">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="text" name="emails" class="form-control" placeholder="info@example.com">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Місто</label>
+              <input type="text" name="city" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Область / регіон</label>
+              <input type="text" name="region" class="form-control">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Контактна особа</label>
+              <input type="text" name="contact_person" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Канал (Telegram / Viber / Email)</label>
+              <input type="text" name="preferred_channel" class="form-control" placeholder="Telegram">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Внутрішні нотатки</label>
+              <textarea name="internal_notes" class="form-control" rows="2" placeholder="Що важливо знати про цю компанію"></textarea>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <h6 class="mb-3">Результат дзвінка (якщо вже телефонували)</h6>
+          <div class="row g-3">
+            <div class="col-md-5">
+              <label class="form-label">Результат</label>
+              <select name="call_result" class="form-select">
+                <option value="">— не вказувати —</option>
+                <option value="success">Позитивно (чекає КП / згоден)</option>
+                <option value="call_back">Перетелефонувати пізніше</option>
+                <option value="refusal">Відмова</option>
+                <option value="wrong_number">Невірний номер / немає зв'язку</option>
+              </select>
+            </div>
+            <div class="col-md-7">
+              <label class="form-label">Коментар до дзвінка</label>
+              <input type="text" name="call_comment" class="form-control" placeholder="Коротко: що сказали">
+            </div>
+          </div>
+
+          <div class="mt-4 d-grid">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="bi bi-check2-circle"></i> Створити картку
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -7,7 +7,6 @@ from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
-
 from leads.models import Company, CallLog
 from accounts.models import User
 from .letter_templates import (
@@ -54,7 +53,12 @@ def tasks(request):
 
     search = request.GET.get("q", "").strip()
     if search:
-        qs = qs.filter(Q(name__icontains=search) | Q(city__icontains=search))
+        qs = qs.filter(
+            Q(name__icontains=search) |
+            Q(city__icontains=search) |
+            Q(phones__icontains=search) |
+            Q(phone_normalized__icontains=search)
+        )           
 
     context = {
         "page": "tasks",
@@ -116,7 +120,12 @@ def database(request):
 
     search = request.GET.get("q", "").strip()
     if search:
-        qs = qs.filter(Q(name__icontains=search) | Q(city__icontains=search))
+        qs = qs.filter(
+            Q(name__icontains=search) |
+            Q(city__icontains=search) |
+            Q(phones__icontains=search) |
+            Q(phone_normalized__icontains=search)
+        )
 
     stage_filter = request.GET.get("stage")
     if stage_filter:
@@ -146,7 +155,12 @@ def partners(request):
 
     search = request.GET.get("q", "").strip()
     if search:
-        qs = qs.filter(Q(name__icontains=search) | Q(city__icontains=search))
+        qs = qs.filter(
+            Q(name__icontains=search) |
+            Q(city__icontains=search) |
+            Q(phones__icontains=search) |
+            Q(phone_normalized__icontains=search)
+        )
 
     context = {
         "page": "partners",
@@ -196,6 +210,18 @@ def lead_detail(request, pk):
                 comment="КП відправлено менеджером" + (f" ({extra})" if extra else ""),
             )
             return redirect("manager:tasks")
+
+        if action == "make_partner":
+            lead.stage = "success"
+            lead.save(update_fields=["stage", "updated_at"])
+
+            CallLog.objects.create(
+                company=lead,
+                operator=request.user,
+                result="success",
+                comment="Переведено в партнери",
+            )
+            return redirect("manager:lead_detail", pk=pk)
 
         # --- Зафиксировать помощь от партнёра (только для stage=success) ---
         if action == "record_help":
@@ -310,6 +336,47 @@ def operator_detail(request, pk):
     }
     return render(request, "manager/operator_detail.html", context)
 
+@manager_required
+def lead_create(request):
+    """Создание нового лида прямо из кабинета менеджера."""
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        if not name:
+            # Можно добавить messages.error, но пока просто вернём форму
+            return redirect("manager:lead_create")
+
+        lead = Company(
+            name=name,
+            phones=request.POST.get("phones", "").strip() or None,
+            city=request.POST.get("city", "").strip() or None,
+            region=request.POST.get("region", "").strip() or None,
+            contact_person=request.POST.get("contact_person", "").strip() or None,
+            emails=request.POST.get("emails", "").strip() or None,
+            preferred_channel=request.POST.get("preferred_channel", "").strip() or None,
+            internal_notes=request.POST.get("internal_notes", "").strip() or None,
+            stage=request.POST.get("stage", "in_progress"),
+            team=request.user.team,
+            assigned_to=request.user,
+        )
+        lead.save()
+
+        # Если указали результат звонка — сразу пишем в историю
+        call_result = request.POST.get("call_result", "").strip()
+        call_comment = request.POST.get("call_comment", "").strip()
+        if call_result:
+            CallLog.objects.create(
+                company=lead,
+                operator=request.user,
+                result=call_result,
+                comment=call_comment or None,
+            )
+
+        return redirect("manager:lead_detail", pk=lead.pk)
+
+    context = {
+        "page": "lead_create",
+    }
+    return render(request, "manager/lead_create.html", context)
 
 # ─────────────────────────────────────────────────────────────
 # Список операторов

@@ -6,9 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>{% block title %}Кабінет менеджера{% endblock %} · LeadManager</title>
 
-  <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 
   <style>
@@ -16,147 +14,63 @@
       --sidebar-width: 220px;
       --header-height: 56px;
       --primary: #0d6efd;
-      --success: #198754;
-      --warning: #ffc107;
-      --danger: #dc3545;
     }
-
-    body {
-      background: #f4f6f9;
-      font-size: 0.925rem;
-    }
-
-    /* ===== Desktop sidebar ===== */
+    body { background: #f4f6f9; font-size: 0.925rem; }
     .sidebar {
-      width: var(--sidebar-width);
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 100vh;
-      background: #1e293b;
-      color: #e2e8f0;
-      z-index: 1040;
-      overflow-y: auto;
-      transition: transform 0.25s ease;
+      width: var(--sidebar-width); position: fixed; top: 0; left: 0; height: 100vh;
+      background: #1e293b; color: #e2e8f0; z-index: 1040; overflow-y: auto;
     }
     .sidebar .brand {
-      height: var(--header-height);
-      display: flex;
-      align-items: center;
-      padding: 0 1.25rem;
-      font-weight: 700;
-      font-size: 1.1rem;
-      border-bottom: 1px solid #334155;
-      color: #fff;
+      height: var(--header-height); display: flex; align-items: center;
+      padding: 0 1.25rem; font-weight: 700; font-size: 1.1rem;
+      border-bottom: 1px solid #334155; color: #fff;
     }
     .sidebar .nav-link {
-      color: #94a3b8;
-      padding: 0.7rem 1.25rem;
-      border-left: 3px solid transparent;
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
+      color: #94a3b8; padding: 0.7rem 1.25rem; border-left: 3px solid transparent;
+      display: flex; align-items: center; gap: 0.6rem;
     }
-    .sidebar .nav-link:hover,
-    .sidebar .nav-link.active {
-      color: #fff;
-      background: #334155;
-      border-left-color: var(--primary);
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff; background: #334155; border-left-color: var(--primary);
     }
     .sidebar .nav-link i { font-size: 1.15rem; width: 1.4rem; text-align: center; }
-
-    .main-content {
-      margin-left: var(--sidebar-width);
-      min-height: 100vh;
-    }
+    .main-content { margin-left: var(--sidebar-width); min-height: 100vh; }
     .topbar {
-      height: var(--header-height);
-      background: #fff;
-      border-bottom: 1px solid #e2e8f0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 1.5rem;
-      position: sticky;
-      top: 0;
-      z-index: 1020;
+      height: var(--header-height); background: #fff; border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem; position: sticky; top: 0; z-index: 1020;
     }
-
-    /* ===== Mobile ===== */
     @media (max-width: 991.98px) {
-      .sidebar {
-        transform: translateX(-100%);
-      }
-      .sidebar.show {
-        transform: translateX(0);
-      }
-      .main-content {
-        margin-left: 0;
-      }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.show { transform: translateX(0); }
+      .main-content { margin-left: 0; }
       .sidebar-backdrop {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.45);
-        z-index: 1035;
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1035;
       }
       .sidebar-backdrop.show { display: block; }
     }
-
-    /* Cards & tables */
     .card { border: none; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
-    .table th { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: .03em; color: #64748b; }
-    .badge-stage {
-      font-weight: 500;
-      font-size: 0.75rem;
-      padding: 0.35em 0.65em;
-    }
+    .badge-stage { font-weight: 500; font-size: 0.75rem; padding: 0.35em 0.65em; }
     .stage-letter_sent { background: #fef3c7; color: #92400e; }
     .stage-in_progress { background: #dbeafe; color: #1e40af; }
     .stage-success { background: #d1fae5; color: #065f46; }
     .stage-refusal { background: #fee2e2; color: #991b1b; }
     .stage-invalid { background: #f1f5f9; color: #475569; }
-
-    /* Lead row clickable */
     tr.lead-row { cursor: pointer; }
     tr.lead-row:hover { background: #f8fafc; }
-
-    /* Template preview box */
     .template-preview {
-      white-space: pre-wrap;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.5rem;
-      padding: 1rem;
-      font-size: 0.9rem;
-      max-height: 320px;
-      overflow-y: auto;
+      white-space: pre-wrap; background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 0.5rem; padding: 1rem; font-size: 0.9rem; max-height: 320px; overflow-y: auto;
     }
-
-    /* Bottom nav for mobile */
     .mobile-bottom-nav {
-      display: none;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: #fff;
-      border-top: 1px solid #e2e8f0;
-      z-index: 1030;
-      padding: 0.35rem 0;
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 1px solid #e2e8f0; z-index: 1030; padding: 0.35rem 0;
     }
     .mobile-bottom-nav a {
-      flex: 1;
-      text-align: center;
-      color: #64748b;
-      font-size: 0.7rem;
-      text-decoration: none;
-      padding: 0.35rem 0;
+      flex: 1; text-align: center; color: #64748b; font-size: 0.7rem;
+      text-decoration: none; padding: 0.35rem 0;
     }
-    .mobile-bottom-nav a.active,
-    .mobile-bottom-nav a:hover { color: var(--primary); }
+    .mobile-bottom-nav a.active, .mobile-bottom-nav a:hover { color: var(--primary); }
     .mobile-bottom-nav i { display: block; font-size: 1.25rem; margin-bottom: 2px; }
-
     @media (max-width: 991.98px) {
       .mobile-bottom-nav { display: flex; }
       .main-content { padding-bottom: 70px; }
@@ -167,7 +81,6 @@
 </head>
 <body>
 
-  <!-- Sidebar -->
   <nav class="sidebar" id="sidebar">
     <div class="brand">
       <i class="bi bi-heart-pulse me-2"></i> LeadManager
@@ -179,13 +92,8 @@
         </a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if page == 'reports' %}active{% endif %}" href="{% url 'manager:reports' %}">
-          <i class="bi bi-bar-chart"></i> Звіти
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link {% if page == 'database' %}active{% endif %}" href="{% url 'manager:database' %}">
-          <i class="bi bi-database"></i> База
+        <a class="nav-link {% if page == 'lead_create' %}active{% endif %}" href="{% url 'manager:lead_create' %}">
+          <i class="bi bi-plus-circle"></i> Новий лід
         </a>
       </li>
       <li class="nav-item">
@@ -194,13 +102,18 @@
         </a>
       </li>
       <li class="nav-item">
+        <a class="nav-link {% if page == 'database' %}active{% endif %}" href="{% url 'manager:database' %}">
+          <i class="bi bi-database"></i> База
+        </a>
+      </li>
+      <li class="nav-item">
         <a class="nav-link {% if page == 'templates' %}active{% endif %}" href="{% url 'manager:templates' %}">
           <i class="bi bi-file-earmark-text"></i> Шаблони КП
         </a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if page == 'operators' or page == 'operator' %}active{% endif %}" href="{% url 'manager:operators' %}">
-          <i class="bi bi-people"></i> Оператори
+        <a class="nav-link {% if page == 'reports' %}active{% endif %}" href="{% url 'manager:reports' %}">
+          <i class="bi bi-bar-chart"></i> Звіти
         </a>
       </li>
     </ul>
@@ -208,7 +121,6 @@
 
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-  <!-- Main -->
   <div class="main-content">
     <header class="topbar">
       <div class="d-flex align-items-center gap-2">
@@ -221,7 +133,9 @@
         <span class="text-muted small desktop-only">
           {% if user.team %}{{ user.team.name }} · {% endif %}{{ user.name }}
         </span>
-        <a href="/admin/logout/" class="btn btn-sm btn-outline-secondary">Вийти</a>
+        <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-box-arrow-right"></i> Вийти
+        </a>
       </div>
     </header>
 
@@ -230,28 +144,23 @@
     </main>
   </div>
 
-  <!-- Mobile bottom nav -->
   <nav class="mobile-bottom-nav">
     <a href="{% url 'manager:tasks' %}" class="{% if page == 'tasks' %}active{% endif %}">
       <i class="bi bi-list-task"></i>Задачі
     </a>
-    <a href="{% url 'manager:database' %}" class="{% if page == 'database' %}active{% endif %}">
-      <i class="bi bi-database"></i>База
-    </a>
     <a href="{% url 'manager:partners' %}" class="{% if page == 'partners' %}active{% endif %}">
       <i class="bi bi-handshake"></i>Партнери
     </a>
+    <a href="{% url 'manager:database' %}" class="{% if page == 'database' %}active{% endif %}">
+      <i class="bi bi-database"></i>База
+    </a>
     <a href="{% url 'manager:templates' %}" class="{% if page == 'templates' %}active{% endif %}">
       <i class="bi bi-file-earmark-text"></i>Шаблони
-    </a>
-    <a href="{% url 'manager:reports' %}" class="{% if page == 'reports' %}active{% endif %}">
-      <i class="bi bi-bar-chart"></i>Звіти
     </a>
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Mobile sidebar toggle
     const sidebar = document.getElementById('sidebar');
     const backdrop = document.getElementById('sidebarBackdrop');
     const menuToggle = document.getElementById('menuToggle');
@@ -264,7 +173,6 @@
       sidebar.classList.add('show');
       backdrop.classList.add('show');
     }
-
     if (menuToggle) {
       menuToggle.addEventListener('click', () => {
         sidebar.classList.contains('show') ? closeSidebar() : openSidebar();
@@ -272,14 +180,12 @@
     }
     if (backdrop) backdrop.addEventListener('click', closeSidebar);
 
-    // Copy to clipboard helper
     function copyText(text) {
       navigator.clipboard.writeText(text).then(() => {
-        // simple toast
         const toast = document.createElement('div');
         toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success py-2 px-3 shadow';
         toast.style.zIndex = 9999;
-        toast.textContent = 'Скопійовано в буфер';
+        toast.textContent = 'Скопійовано!';
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 2000);
       });
