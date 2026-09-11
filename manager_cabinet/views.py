@@ -7,7 +7,7 @@ from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
-from leads.models import Company, CallLog
+from leads.models import Company, CallLog, DataSource
 from accounts.models import User
 from .letter_templates import (
     TEMPLATES, render_template, get_templates_list, get_attachment_files
@@ -37,6 +37,15 @@ def _filter_by_team(qs, user):
         return qs.filter(Q(team=user.team) | Q(team__isnull=True))
     return qs.none()
 
+def _filter_released(qs, user):
+    """Команда видит только открытые источники. Owner — всё."""
+    if _is_owner(user):
+        return qs
+    released_keys = DataSource.objects.filter(is_released=True).values_list("key", flat=True)
+    return qs.filter(
+        Q(source__in=released_keys) | Q(source__isnull=True) | Q(source="")
+    )
+
 
 # ─────────────────────────────────────────────────────────────
 # Список задач (letter_sent + is_sent_by_manager=False)
@@ -50,6 +59,7 @@ def tasks(request):
         .order_by("updated_at")
     )
     qs = _filter_by_team(qs, request.user)
+    qs = _filter_released(qs, request.user)
 
     search = request.GET.get("q", "").strip()
     if search:
@@ -117,6 +127,7 @@ def database(request):
         .order_by("-updated_at")
     )
     qs = _filter_by_team(qs, request.user)
+    qs = _filter_released(qs, request.user)
 
     search = request.GET.get("q", "").strip()
     if search:
@@ -152,6 +163,7 @@ def partners(request):
         .order_by("-updated_at")
     )
     qs = _filter_by_team(qs, request.user)
+    qs = _filter_released(qs, request.user)
 
     search = request.GET.get("q", "").strip()
     if search:
