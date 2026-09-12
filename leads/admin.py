@@ -41,25 +41,19 @@ class CallLogAdmin(admin.ModelAdmin):
 
 @admin.register(DataSource)
 class DataSourceAdmin(admin.ModelAdmin):
-    list_display = ("key", "title", "is_released", "released_at", "leads_count")
-    list_filter = ("is_released",)
+    list_display = ("key", "title", "teams_list", "leads_count")
     search_fields = ("key", "title")
-    actions = ["release_sources", "close_sources", "sync_from_companies"]
-    readonly_fields = ("released_at", "created_at")
+    filter_horizontal = ("teams",)  # удобный выбор команд
+    actions = ["sync_from_companies"]
+
+    def teams_list(self, obj):
+        names = list(obj.teams.values_list("name", flat=True))
+        return ", ".join(names) if names else "— закрыт —"
+    teams_list.short_description = "Команды"
 
     def leads_count(self, obj):
         return Company.objects.filter(source=obj.key).count()
     leads_count.short_description = "Лидов"
-
-    @admin.action(description="Открыть для команды")
-    def release_sources(self, request, queryset):
-        updated = queryset.update(is_released=True, released_at=timezone.now())
-        self.message_user(request, f"Открыто источников: {updated}")
-
-    @admin.action(description="Закрыть (скрыть от команды)")
-    def close_sources(self, request, queryset):
-        updated = queryset.update(is_released=False)
-        self.message_user(request, f"Закрыто источников: {updated}")
 
     @admin.action(description="Подтянуть источники из компаний")
     def sync_from_companies(self, request, queryset):
@@ -73,8 +67,7 @@ class DataSourceAdmin(admin.ModelAdmin):
         created = 0
         for key in keys:
             _, was_created = DataSource.objects.get_or_create(
-                key=key,
-                defaults={"title": key},
+                key=key, defaults={"title": key}
             )
             if was_created:
                 created += 1

@@ -24,6 +24,13 @@ class UserAdmin(DjangoUserAdmin):
         ("Lead Manager", {"fields": ("telegram_id", "team", "description", "access_revoked")}),
     )
 
+    def save_model(self, request, obj, form, change):
+        if obj.is_staff and not obj.is_superuser and not obj.team_id:
+            from django.contrib import messages
+            messages.error(request, "Укажите команду. Без команды staff-пользователя сохранить нельзя.")
+            return  # не сохраняем
+        super().save_model(request, obj, form, change)
+
 
 @admin.register(AccessAuditLog)
 class AccessAuditLogAdmin(admin.ModelAdmin):

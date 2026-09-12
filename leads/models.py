@@ -179,6 +179,42 @@ class DataSource(models.Model):
         max_length=255, blank=True,
         verbose_name="Название (для удобства)",
     )
+    # Кому открыт этот источник
+    teams = models.ManyToManyField(
+        "accounts.Team",
+        blank=True,
+        related_name="data_sources",
+        verbose_name="Открыт для команд",
+        help_text="Пусто = закрыт для всех. Добавь команду — она увидит лиды.",
+    )
+    notes = models.TextField(blank=True, verbose_name="Заметки")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Источник данных"
+        verbose_name_plural = "Источники данных"
+        ordering = ["key"]
+
+    def __str__(self):
+        n = self.teams.count()
+        if n == 0:
+            status = "закрыт"
+        else:
+            status = f"открыт для {n} ком."
+        return f"{self.title or self.key} ({status})"
+
+    @property
+    def is_released(self):
+        return self.teams.exists()
+    
+    teams = models.ManyToManyField(
+        "accounts.Team",
+        blank=True,
+        related_name="data_sources",
+        verbose_name="Открыт для команд",
+        help_text="Пусто = закрыт для всех. Добавь команду — она увидит лиды.",
+    )
+    
     is_released = models.BooleanField(
         default=False,
         verbose_name="Открыт для команды",

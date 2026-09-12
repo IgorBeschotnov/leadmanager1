@@ -43,7 +43,7 @@ class Command(BaseCommand):
         for key, title in SOURCES:
             DataSource.objects.get_or_create(key=key, defaults={"title": title, "is_released": False})
 
-        stages = ["new", "new", "new", "in_progress", "letter_sent"]
+        stages = ["new", "new", "new", "in_progress", ]
         created = 0
         for i in range(1, count + 1):
             src_key, _ = SOURCES[(i - 1) % len(SOURCES)]

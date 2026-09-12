@@ -28,6 +28,7 @@ class User(AbstractUser):
     AbstractUser уже даёт username/password/email — этого достаточно
     для входа в систему, доп.поля из документа добавлены поверх.
     """
+    
     telegram_id = models.CharField(
         max_length=64, blank=True, null=True,
         verbose_name="Telegram ID", help_text="Для раздачи лидов через бота"
@@ -54,6 +55,15 @@ class User(AbstractUser):
     @property
     def name(self):
         return self.get_full_name() or self.username
+    
+    def clean(self):
+            from django.core.exceptions import ValidationError
+            super().clean()
+            if self.is_staff and not self.is_superuser and not self.team_id:
+                raise ValidationError({
+                    "team": "Укажите команду. Менеджера/сотрудника без команды создавать нельзя."
+                    })
+                    
 
 
 class UserCapability(models.Model):
