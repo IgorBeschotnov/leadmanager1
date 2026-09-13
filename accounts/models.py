@@ -8,13 +8,42 @@ class Team(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Название команды")
     description = models.TextField(blank=True, null=True, verbose_name="Описание")
     created_at = models.DateTimeField(auto_now_add=True)
-
+    bot_token = models.CharField(
+        max_length=100,
+        verbose_name="Токен Telegram-бота",
+        help_text="Обязателен. Отдельный бот этой организации.",
+        )
+    bot_username = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="@username бота",
+        )
+# для твоего weekly-доступа
+    access_password_word = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Слово-пароль для продления",
+        help_text="Простое слово; запрос раз в неделю в owner-боте",
+        )
+    access_valid_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Доступ к приложению до",
+        )
     class Meta:
         verbose_name = "Команда"
         verbose_name_plural = "Команды"
 
     def __str__(self):
         return self.name
+        def clean(self):
+            from django.core.exceptions import ValidationError
+            super().clean()
+            if not self.bot_token:
+                raise ValidationError({
+                    "bot_token": "Укажите токен бота команды."
+                })
+    
 
 
 class User(AbstractUser):
