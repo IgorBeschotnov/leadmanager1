@@ -36,12 +36,13 @@ class Team(models.Model):
 
     def __str__(self):
         return self.name
-        def clean(self):
-            from django.core.exceptions import ValidationError
-            super().clean()
-            if not self.bot_token:
-                raise ValidationError({
-                    "bot_token": "Укажите токен бота команды."
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        super().clean()
+        if not self.bot_token:
+            raise ValidationError({
+                "bot_token": "Укажите токен бота команды."
                 })
     
 
