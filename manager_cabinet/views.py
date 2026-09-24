@@ -494,3 +494,30 @@ def operators_list(request):
         "operators": operators,
     }
     return render(request, "manager/operators_list.html", context)
+@require_GET
+def public_home(request):
+    managers = [
+        {
+            "name": "Тетяна",
+            "role": "Керівник команди",
+            "desc": "Координація дзвінків та КП",
+            "avatar": "https://ui-avatars.com/api/?name=Tetiana&background=0d6efd&color=fff&size=128",
+        },
+        {
+            "name": "Олег",
+            "role": "Оператор",
+            "desc": "Перший контакт з лідами",
+            "avatar": "https://ui-avatars.com/api/?name=Oleg&background=198754&color=fff&size=128",
+        },
+        {
+            "name": "Марія",
+            "role": "Менеджер з партнерств",
+            "desc": "Супровід партнерів і листів",
+            "avatar": "https://ui-avatars.com/api/?name=Maria&background=6f42c1&color=fff&size=128",
+        },
+    ]
+    return render(request, "public/home.html", {
+        "managers": managers,
+        "org_name": "Реабілітаційний центр",
+        "org_city": "Шахтарське",
+    })
