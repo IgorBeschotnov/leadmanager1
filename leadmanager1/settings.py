@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "accounts",
     "leads",
     "manager_cabinet",
+    "ai"
 ]
 
 MIDDLEWARE = [

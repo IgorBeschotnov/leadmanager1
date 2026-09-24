@@ -13,6 +13,10 @@ from .letter_templates import (
     TEMPLATES, render_template, get_templates_list, get_attachment_files
 )
 
+# AI-генерация КП
+from ai.generate import generate_kp
+from ai.client import AIClientError
+
 
 def manager_required(view_func):
     """Простая проверка: staff + не отозван доступ."""
@@ -36,6 +40,7 @@ def _filter_by_team(qs, user):
     if getattr(user, "team_id", None):
         return qs.filter(Q(team=user.team) | Q(team__isnull=True))
     return qs.none()
+
 
 def _filter_released(qs, user):
     """Команда видит только открытые источники. Owner — всё."""
@@ -68,7 +73,7 @@ def tasks(request):
             Q(city__icontains=search) |
             Q(phones__icontains=search) |
             Q(phone_normalized__icontains=search)
-        )           
+        )
 
     context = {
         "page": "tasks",
@@ -287,6 +292,54 @@ def lead_detail(request, pk):
 
 
 # ─────────────────────────────────────────────────────────────
+# AI-генерация КП (персонализированный текст через LLM)
+# ─────────────────────────────────────────────────────────────
+@manager_required
+@require_POST
+def ai_generate_kp(request, pk):
+    """
+    POST /manager/lead/<pk>/ai-generate/
+
+    Параметры формы:
+      channel        = email | telegram | viber | whatsapp
+      tone           = emotional | official | short
+      volume         = short | medium | full
+      date           = дата відправки (текст)
+      number         = номер листа
+      manager_name   = ім'я менеджера
+      manager_phone  = телефон менеджера
+    """
+    lead = get_object_or_404(Company, pk=pk)
+
+    channel = request.POST.get("channel", "email")
+    tone = request.POST.get("tone", "official")
+    volume = request.POST.get("volume", "medium")
+
+    inserts = {
+        "Дата відправки": request.POST.get("date", ""),
+        "Номер листа": request.POST.get("number", ""),
+        "Менеджер": request.POST.get("manager_name", "") or (
+            getattr(request.user, "get_full_name", lambda: "")() or request.user.username
+        ),
+        "Телефон менеджера": request.POST.get("manager_phone", ""),
+    }
+
+    try:
+        text = generate_kp(
+            company=lead,
+            channel=channel,
+            tone=tone,
+            volume=volume,
+            inserts=inserts,
+        )
+        return JsonResponse({"ok": True, "text": text})
+    except AIClientError as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": f"Внутрішня помилка: {e}"}, status=500)
+
+
+# ─────────────────────────────────────────────────────────────
 # Страница шаблонов
 # ─────────────────────────────────────────────────────────────
 @manager_required
@@ -348,13 +401,13 @@ def operator_detail(request, pk):
     }
     return render(request, "manager/operator_detail.html", context)
 
+
 @manager_required
 def lead_create(request):
     """Создание нового лида прямо из кабинета менеджера."""
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
         if not name:
-            # Можно добавить messages.error, но пока просто вернём форму
             return redirect("manager:lead_create")
 
         lead = Company(
@@ -372,7 +425,6 @@ def lead_create(request):
         )
         lead.save()
 
-        # Если указали результат звонка — сразу пишем в историю
         call_result = request.POST.get("call_result", "").strip()
         call_comment = request.POST.get("call_comment", "").strip()
         if call_result:
@@ -389,6 +441,7 @@ def lead_create(request):
         "page": "lead_create",
     }
     return render(request, "manager/lead_create.html", context)
+
 
 # ─────────────────────────────────────────────────────────────
 # Список операторов

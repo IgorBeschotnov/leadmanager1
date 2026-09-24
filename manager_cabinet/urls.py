@@ -14,4 +14,5 @@ urlpatterns = [
     path("operators/", views.operators_list, name="operators"),
     path("operator/<int:pk>/", views.operator_detail, name="operator_detail"),
     path("lead/create/", views.lead_create, name="lead_create"),
+    path("lead/<int:pk>/ai-generate/", views.ai_generate_kp, name="ai_generate_kp"),
 ]
