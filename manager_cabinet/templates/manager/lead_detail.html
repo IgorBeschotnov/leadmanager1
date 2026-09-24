@@ -176,6 +176,55 @@
     </div>
     {% endif %}
 
+        <!-- AI-генерація КП -->
+    <div class="card mb-3 border-primary">
+      <div class="card-header bg-primary-subtle fw-semibold">
+        <i class="bi bi-stars"></i> AI-генерація КП
+      </div>
+      <div class="card-body">
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label small">Канал</label>
+            <select id="aiChannel" class="form-select form-select-sm">
+              <option value="email">Email</option>
+              <option value="telegram">Telegram</option>
+              <option value="viber">Viber</option>
+              <option value="whatsapp">WhatsApp</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label small">Тон</label>
+            <select id="aiTone" class="form-select form-select-sm">
+              <option value="official">Офіційний</option>
+              <option value="emotional">Емоційний</option>
+              <option value="short">Короткий</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label small">Обсяг</label>
+            <select id="aiVolume" class="form-select form-select-sm">
+              <option value="medium">Середній</option>
+              <option value="short">Короткий</option>
+              <option value="full">Повний</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary w-100" id="aiGenerateBtn">
+          <i class="bi bi-magic"></i> Згенерувати
+        </button>
+        <div id="aiError" class="alert alert-danger small mt-2 d-none"></div>
+        <div id="aiResultBox" class="mt-3 d-none">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="small fw-semibold">Результат</span>
+            <button type="button" class="btn btn-sm btn-success" id="aiCopyBtn">
+              <i class="bi bi-clipboard"></i> Копіювати
+            </button>
+          </div>
+          <div class="template-preview" id="aiResultText"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Шаблони КП -->
     <div class="card mb-3">
       <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -240,4 +289,45 @@ document.getElementById('copyBtn')?.addEventListener('click', () => {
   if (window._lastTemplateText) copyText(window._lastTemplateText);
 });
 </script>
+document.getElementById('aiGenerateBtn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('aiGenerateBtn');
+  const err = document.getElementById('aiError');
+  const box = document.getElementById('aiResultBox');
+  err.classList.add('d-none');
+  box.classList.add('d-none');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ...';
+
+  const fd = new FormData();
+  fd.append('channel', document.getElementById('aiChannel').value);
+  fd.append('tone', document.getElementById('aiTone').value);
+  fd.append('volume', document.getElementById('aiVolume').value);
+  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  try {
+    const resp = await fetch('{% url "manager:ai_generate_kp" lead.pk %}', {
+      method: 'POST',
+      body: fd,
+      credentials: 'same-origin',
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      document.getElementById('aiResultText').textContent = data.text;
+      box.classList.remove('d-none');
+      window._lastAiText = data.text;
+    } else {
+      err.textContent = data.error || 'Помилка';
+      err.classList.remove('d-none');
+    }
+  } catch (e) {
+    err.textContent = String(e);
+    err.classList.remove('d-none');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-magic"></i> Згенерувати';
+});
+
+document.getElementById('aiCopyBtn')?.addEventListener('click', () => {
+  if (window._lastAiText) copyText(window._lastAiText);
+});
 {% endblock %}

@@ -16,7 +16,36 @@ from .letter_templates import (
 # AI-генерация КП
 from ai.generate import generate_kp
 from ai.client import AIClientError
+from django.views.decorators.http import require_GET  # если ещё нет
 
+@require_GET
+def public_home(request):
+    """Публічна головна — без логіну. Текст/менеджери — заглушка, потім замінимо."""
+    managers = [
+        {
+            "name": "Тетяна",
+            "role": "Керівник команди",
+            "desc": "Координація дзвінків та КП",
+            "avatar": "https://ui-avatars.com/api/?name=Tetiana&background=0d6efd&color=fff&size=128",
+        },
+        {
+            "name": "Олег",
+            "role": "Оператор",
+            "desc": "Перший контакт з лідами",
+            "avatar": "https://ui-avatars.com/api/?name=Oleg&background=198754&color=fff&size=128",
+        },
+        {
+            "name": "Марія",
+            "role": "Менеджер з партнерств",
+            "desc": "Супровід партнерів і листів",
+            "avatar": "https://ui-avatars.com/api/?name=Maria&background=6f42c1&color=fff&size=128",
+        },
+    ]
+    return render(request, "public/home.html", {
+        "managers": managers,
+        "org_name": "Реабілітаційний центр",
+        "org_city": "Шахтарське",
+    })
 
 def manager_required(view_func):
     """Простая проверка: staff + не отозван доступ."""
@@ -43,10 +72,18 @@ def _filter_by_team(qs, user):
 
 
 def _filter_released(qs, user):
-    """Команда видит только открытые источники. Owner — всё."""
+    """Команда видит только источники, открытые для её Team. Owner — всё."""
     if _is_owner(user):
         return qs
-    released_keys = DataSource.objects.filter(is_released=True).values_list("key", flat=True)
+    team = getattr(user, "team", None)
+    if not team:
+        # без команды — только лиды без источника
+        return qs.filter(Q(source__isnull=True) | Q(source=""))
+    released_keys = (
+        DataSource.objects
+        .filter(teams=team)
+        .values_list("key", flat=True)
+    )
     return qs.filter(
         Q(source__in=released_keys) | Q(source__isnull=True) | Q(source="")
     )
