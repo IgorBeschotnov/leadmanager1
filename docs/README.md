@@ -38,3 +38,18 @@ python manage.py runserver
 - Отдельная модель `Contact` — заменена на `contact_person` (см. решение)
 - `Operator`, proxy-модели (`ActiveLead`, `Partner`, `Task`) — не
   восстанавливались
+
+  ## Прод / сервер
+
+- Сайт: `http://<IP>/` — публічна головна
+- Кабінет: `/manager/` → задачі
+- Адмінка: `/admin/`
+- Бот: `python bot.py` (токен у `.env`: `BOT_TOKEN`)
+
+### Кабінет
+- **Задачі** — letter_sent, ще не відправлено менеджером
+- **База** — робочі ліди (без new/refusal/success)
+- **AI КП** — на картці ліда, потрібні Настройки AI в адмінці
+
+### DataSource
+Джерело відкривається для команд через M2M `teams` в адмінці (не поле is_released).
