@@ -36,7 +36,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "leadmanager1.settings")
 django.setup()
 
 from django.contrib.auth import get_user_model
-from leads.models import Company, CallLog
+from django.db.models import Q
+from leads.models import Company, CallLog, DataSource
 
 User = get_user_model()
 
@@ -113,7 +114,37 @@ def get_operator_user(chat_id: int, from_user_id: int | None = None):
 
     return None, "—"
 
+def get_new_lead_for_operator(user):
+    """
+    Новый лид только из источников, открытых для команды оператора.
+    team у оператора обязателен.
+    """
+    team = getattr(user, "team", None)
+    if not team:
+        return None
 
+    released_keys = list(
+        DataSource.objects.filter(teams=team).values_list("key", flat=True)
+    )
+
+    # Сырой пул (team пустой) или уже этой команды; статус new
+    qs = (
+        Company.objects
+        .filter(stage="new")
+        .filter(Q(team__isnull=True) | Q(team=team))
+    )
+
+    if released_keys:
+        qs = qs.filter(
+            Q(source__in=released_keys)
+            | Q(source__isnull=True)
+            | Q(source="")
+        )
+    else:
+        # Нет открытых источников — только лиды без source
+        qs = qs.filter(Q(source__isnull=True) | Q(source=""))
+
+    return qs.order_by("created_at").first()
 # ─────────────────────────────────────────────────────────────
 # Клавіатури
 # ─────────────────────────────────────────────────────────────
@@ -241,18 +272,17 @@ def handle_lead_request(message):
         bot.send_message(message.chat.id, "Спочатку налаштуй операторів у адмінці.")
         return
 
-    if message.text == "📞 Прислать новый лид":
-        company = Company.objects.filter(stage="new").order_by("created_at").first()
+            company = get_new_lead_for_operator(user_obj)
         if not company:
             bot.send_message(
                 message.chat.id,
-                "🎉 Нові ліди в базі закінчились!",
+                "🎉 Немає нових лідів для Вашої команди "
+                "(перевірте відкриті джерела в адмінці).",
                 reply_markup=get_main_menu(),
             )
             return
         company.stage = "in_progress"
         company.assigned_to = user_obj
-        # якщо у оператора є team — проставимо на лід (один раз)
         if user_obj.team_id and not company.team_id:
             company.team = user_obj.team
         company.save()

@@ -10,7 +10,6 @@
 </div>
 
 <div class="row g-3">
-  <!-- Левая колонка -->
   <div class="col-lg-7">
     <div class="card mb-3">
       <div class="card-body">
@@ -30,31 +29,24 @@
         <dl class="row mb-0 small">
           <dt class="col-sm-4 text-muted">Місто / регіон</dt>
           <dd class="col-sm-8">{{ lead.city|default:"—" }}{% if lead.region %}, {{ lead.region }}{% endif %}</dd>
-
           <dt class="col-sm-4 text-muted">Телефони</dt>
           <dd class="col-sm-8">{{ lead.phones|default:"—" }}</dd>
-
           <dt class="col-sm-4 text-muted">Email</dt>
           <dd class="col-sm-8">{{ lead.emails|default:"—" }}</dd>
-
           <dt class="col-sm-4 text-muted">Сайт</dt>
           <dd class="col-sm-8">
             {% if lead.website %}<a href="{{ lead.website }}" target="_blank" rel="noopener">{{ lead.website }}</a>{% else %}—{% endif %}
           </dd>
-
           <dt class="col-sm-4 text-muted">Контактна особа</dt>
           <dd class="col-sm-8">{{ lead.contact_person|default:"—" }}</dd>
-
           <dt class="col-sm-4 text-muted">Оператор</dt>
           <dd class="col-sm-8">
             {% if lead.assigned_to %}
-              <a href="{% url 'manager:operator_detail' lead.assigned_to.pk %}">{{ lead.assigned_to.name }}</a>
+              <a href="{% url 'manager:operator_detail' lead.assigned_to.pk %}">{{ lead.assigned_to.get_full_name|default:lead.assigned_to.username }}</a>
             {% else %}—{% endif %}
           </dd>
-
           <dt class="col-sm-4 text-muted">Джерело</dt>
           <dd class="col-sm-8">{{ lead.source|default:"—" }}</dd>
-
           <dt class="col-sm-4 text-muted">Категорії</dt>
           <dd class="col-sm-8">
             {% for cat in lead.categories.all %}
@@ -65,7 +57,6 @@
       </div>
     </div>
 
-    <!-- Внутрішні нотатки -->
     <div class="card mb-3">
       <div class="card-header bg-white fw-semibold">Внутрішні нотатки</div>
       <div class="card-body">
@@ -78,14 +69,13 @@
       </div>
     </div>
 
-    <!-- Історія -->
     <div class="card">
       <div class="card-header bg-white fw-semibold">Історія дзвінків / дій</div>
       <div class="list-group list-group-flush">
         {% for log in call_logs %}
         <div class="list-group-item">
           <div class="d-flex justify-content-between small text-muted mb-1">
-            <span>{{ log.created_at|date:"d.m.Y H:i" }} · {{ log.operator.name|default:"—" }}</span>
+            <span>{{ log.created_at|date:"d.m.Y H:i" }} · {% if log.operator %}{{ log.operator.get_full_name|default:log.operator.username }}{% else %}—{% endif %}</span>
             <span class="badge bg-light text-dark">{{ log.get_result_display }}</span>
           </div>
           {% if log.comment %}
@@ -99,10 +89,8 @@
     </div>
   </div>
 
-  <!-- Права колонка -->
   <div class="col-lg-5">
 
-    <!-- Перевести в партнери -->
     {% if lead.stage != "success" and lead.stage != "refusal" and lead.stage != "invalid" %}
     <div class="card mb-3 border-success">
       <div class="card-body">
@@ -117,7 +105,6 @@
     </div>
     {% endif %}
 
-    <!-- КП відправлено -->
     {% if lead.stage == "letter_sent" and not lead.is_sent_by_manager %}
     <div class="card mb-3 border-warning">
       <div class="card-header bg-warning-subtle fw-semibold">
@@ -127,7 +114,6 @@
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="action" value="mark_sent">
-
           {% if attachments %}
           <div class="mb-3">
             <label class="form-label small">Прикріпити файли</label>
@@ -139,7 +125,6 @@
             {% endfor %}
           </div>
           {% endif %}
-
           <button type="submit" class="btn btn-warning w-100">
             <i class="bi bi-check2-circle"></i> КП відправлено (+3 дні на перезвон)
           </button>
@@ -148,7 +133,6 @@
     </div>
     {% endif %}
 
-    <!-- Допомога партнера -->
     {% if lead.stage == "success" %}
     <div class="card mb-3 border-success">
       <div class="card-header bg-success-subtle fw-semibold">
@@ -158,7 +142,6 @@
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="action" value="record_help">
-
           <div class="mb-2">
             <label class="form-label small">Сума допомоги (грн)</label>
             <input type="text" name="donation_amount" class="form-control form-control-sm" placeholder="наприклад 5000">
@@ -167,7 +150,6 @@
             <label class="form-label small">Вага (кг)</label>
             <input type="text" name="package_weight" class="form-control form-control-sm" placeholder="наприклад 12">
           </div>
-
           <button type="submit" class="btn btn-success w-100">
             <i class="bi bi-check2-circle"></i> Зафіксувати допомогу
           </button>
@@ -176,56 +158,7 @@
     </div>
     {% endif %}
 
-        <!-- AI-генерація КП -->
-    <div class="card mb-3 border-primary">
-      <div class="card-header bg-primary-subtle fw-semibold">
-        <i class="bi bi-stars"></i> AI-генерація КП
-      </div>
-      <div class="card-body">
-        <div class="row g-2 mb-2">
-          <div class="col-6">
-            <label class="form-label small">Канал</label>
-            <select id="aiChannel" class="form-select form-select-sm">
-              <option value="email">Email</option>
-              <option value="telegram">Telegram</option>
-              <option value="viber">Viber</option>
-              <option value="whatsapp">WhatsApp</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <label class="form-label small">Тон</label>
-            <select id="aiTone" class="form-select form-select-sm">
-              <option value="official">Офіційний</option>
-              <option value="emotional">Емоційний</option>
-              <option value="short">Короткий</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <label class="form-label small">Обсяг</label>
-            <select id="aiVolume" class="form-select form-select-sm">
-              <option value="medium">Середній</option>
-              <option value="short">Короткий</option>
-              <option value="full">Повний</option>
-            </select>
-          </div>
-        </div>
-        <button type="button" class="btn btn-primary w-100" id="aiGenerateBtn">
-          <i class="bi bi-magic"></i> Згенерувати
-        </button>
-        <div id="aiError" class="alert alert-danger small mt-2 d-none"></div>
-        <div id="aiResultBox" class="mt-3 d-none">
-          <div class="d-flex justify-content-between mb-2">
-            <span class="small fw-semibold">Результат</span>
-            <button type="button" class="btn btn-sm btn-success" id="aiCopyBtn">
-              <i class="bi bi-clipboard"></i> Копіювати
-            </button>
-          </div>
-          <div class="template-preview" id="aiResultText"></div>
-        </div>
-      </div>
-    </div>
-
-        <!-- AI-генерація КП -->
+    <!-- AI-генерація КП (один блок) -->
     <div class="card mb-3 border-primary">
       <div class="card-header bg-primary-subtle fw-semibold">
         <i class="bi bi-stars"></i> AI-генерація КП
@@ -292,7 +225,6 @@
           </button>
           {% endfor %}
         </div>
-
         <div id="previewBox" class="mt-3 d-none">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <span class="small fw-semibold" id="previewTitle">Текст</span>
@@ -318,12 +250,15 @@
 
 {% block extra_js %}
 <script>
-document.querySelectorAll('.template-btn').forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const key = btn.dataset.key;
-    const companyId = btn.dataset.company;
-    const resp = await fetch(`{% url 'manager:template_preview' 'PLACEHOLDER' %}`.replace('PLACEHOLDER', key) + `?company_id=${companyId}`);
-    const data = await resp.json();
+document.querySelectorAll('.template-btn').forEach(function (btn) {
+  btn.addEventListener('click', async function () {
+    var key = btn.dataset.key;
+    var companyId = btn.dataset.company;
+    var resp = await fetch(
+      '{% url "manager:template_preview" "PLACEHOLDER" %}'.replace('PLACEHOLDER', key) +
+      '?company_id=' + companyId
+    );
+    var data = await resp.json();
     if (data.text) {
       document.getElementById('previewBox').classList.remove('d-none');
       document.getElementById('previewTitle').textContent = data.name;
@@ -334,90 +269,54 @@ document.querySelectorAll('.template-btn').forEach(btn => {
   });
 });
 
-document.getElementById('copyBtn')?.addEventListener('click', () => {
+document.getElementById('copyBtn') && document.getElementById('copyBtn').addEventListener('click', function () {
   if (window._lastTemplateText) copyText(window._lastTemplateText);
 });
+
+document.getElementById('aiGenerateBtn').addEventListener('click', async function () {
+  var btn = document.getElementById('aiGenerateBtn');
+  var err = document.getElementById('aiError');
+  var box = document.getElementById('aiResultBox');
+  var textEl = document.getElementById('aiResultText');
+
+  err.classList.add('d-none');
+  err.textContent = '';
+  box.classList.add('d-none');
+  btn.disabled = true;
+  btn.textContent = 'Зачекайте...';
+
+  var fd = new FormData();
+  fd.append('channel', document.getElementById('aiChannel').value);
+  fd.append('tone', document.getElementById('aiTone').value);
+  fd.append('volume', document.getElementById('aiVolume').value);
+  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  try {
+    var resp = await fetch('{% url "manager:ai_generate_kp" lead.pk %}', {
+      method: 'POST',
+      body: fd,
+      credentials: 'same-origin'
+    });
+    var data = await resp.json();
+    if (data.ok) {
+      textEl.textContent = data.text;
+      box.classList.remove('d-none');
+      window._lastAiText = data.text;
+    } else {
+      err.textContent = data.error || 'Помилка';
+      err.classList.remove('d-none');
+    }
+  } catch (e) {
+    err.textContent = String(e);
+    err.classList.remove('d-none');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-magic"></i> Згенерувати';
+});
+
+document.getElementById('aiCopyBtn').addEventListener('click', function () {
+  if (window._lastAiText) copyText(window._lastAiText);
+});
 </script>
-document.getElementById('aiGenerateBtn')?.addEventListener('click', async () => {
-  const btn = document.getElementById('aiGenerateBtn');
-  const err = document.getElementById('aiError');
-  const box = document.getElementById('aiResultBox');
-  err.classList.add('d-none');
-  box.classList.add('d-none');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ...';
-
-  const fd = new FormData();
-  fd.append('channel', document.getElementById('aiChannel').value);
-  fd.append('tone', document.getElementById('aiTone').value);
-  fd.append('volume', document.getElementById('aiVolume').value);
-  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-
-  try {
-    const resp = await fetch('{% url "manager:ai_generate_kp" lead.pk %}', {
-      method: 'POST',
-      body: fd,
-      credentials: 'same-origin',
-    });
-    const data = await resp.json();
-    if (data.ok) {
-      document.getElementById('aiResultText').textContent = data.text;
-      box.classList.remove('d-none');
-      window._lastAiText = data.text;
-    } else {
-      err.textContent = data.error || 'Помилка';
-      err.classList.remove('d-none');
-    }
-  } catch (e) {
-    err.textContent = String(e);
-    err.classList.remove('d-none');
-  }
-  btn.disabled = false;
-  btn.innerHTML = '<i class="bi bi-magic"></i> Згенерувати';
-});
-
-document.getElementById('aiCopyBtn')?.addEventListener('click', () => {
-  if (window._lastAiText) copyText(window._lastAiText);
-});
-document.getElementById('aiGenerateBtn')?.addEventListener('click', async () => {
-  const btn = document.getElementById('aiGenerateBtn');
-  const err = document.getElementById('aiError');
-  const box = document.getElementById('aiResultBox');
-  err.classList.add('d-none');
-  box.classList.add('d-none');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-  const fd = new FormData();
-  fd.append('channel', document.getElementById('aiChannel').value);
-  fd.append('tone', document.getElementById('aiTone').value);
-  fd.append('volume', document.getElementById('aiVolume').value);
-  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-
-  try {
-    const resp = await fetch('{% url "manager:ai_generate_kp" lead.pk %}', {
-      method: 'POST',
-      body: fd,
-      credentials: 'same-origin',
-    });
-    const data = await resp.json();
-    if (data.ok) {
-      document.getElementById('aiResultText').textContent = data.text;
-      box.classList.remove('d-none');
-      window._lastAiText = data.text;
-    } else {
-      err.textContent = data.error || 'Помилка';
-      err.classList.remove('d-none');
-    }
-  } catch (e) {
-    err.textContent = String(e);
-    err.classList.remove('d-none');
-  }
-  btn.disabled = false;
-  btn.innerHTML = '<i class="bi bi-magic"></i> Згенерувати';
-});
-
-document.getElementById('aiCopyBtn')?.addEventListener('click', () => {
-  if (window._lastAiText) copyText(window._lastAiText);
-});
 {% endblock %}

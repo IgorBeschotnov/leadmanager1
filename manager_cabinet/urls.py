@@ -5,9 +5,7 @@ from . import views
 app_name = "manager"
 
 urlpatterns = [
-    # /manager/ → задачи
     path("", RedirectView.as_view(pattern_name="manager:tasks", permanent=False)),
-
     path("tasks/", views.tasks, name="tasks"),
     path("reports/", views.reports, name="reports"),
     path("database/", views.database, name="database"),

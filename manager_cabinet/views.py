@@ -72,33 +72,29 @@ def _filter_by_team(qs, user):
 
 
 def _filter_released(qs, user):
-    """Команда видит только источники, открытые для её Team. Owner — всё."""
     if _is_owner(user):
         return qs
     team = getattr(user, "team", None)
     if not team:
-        # без команды — только лиды без источника
         return qs.filter(Q(source__isnull=True) | Q(source=""))
     released_keys = (
-        DataSource.objects
-        .filter(teams=team)
-        .values_list("key", flat=True)
+        DataSource.objects.filter(teams=team).values_list("key", flat=True)
     )
     return qs.filter(
         Q(source__in=released_keys) | Q(source__isnull=True) | Q(source="")
     )
-
 
 # ─────────────────────────────────────────────────────────────
 # Список задач (letter_sent + is_sent_by_manager=False)
 # ─────────────────────────────────────────────────────────────
 @manager_required
 def tasks(request):
+    # Оператор запросил отправку КП → менеджер обрабатывает по очереди
     qs = (
         Company.objects
         .filter(stage="letter_sent", is_sent_by_manager=False)
         .select_related("assigned_to", "team")
-        .order_by("updated_at")
+        .order_by("updated_at")  # FIFO: дольше ждут — выше
     )
     qs = _filter_by_team(qs, request.user)
     qs = _filter_released(qs, request.user)
@@ -121,7 +117,15 @@ def tasks(request):
     }
     return render(request, "manager/tasks.html", context)
 
-
+    context = {
+        "page": "tasks",
+        "leads": qs,
+        "templates": get_templates_list(),
+        "attachments": get_attachment_files(),
+        "search": search,
+    }
+    return render(request, "manager/tasks.html", context)
+    
 # ─────────────────────────────────────────────────────────────
 # Отчёты
 # ─────────────────────────────────────────────────────────────
@@ -162,9 +166,12 @@ def reports(request):
 # ─────────────────────────────────────────────────────────────
 @manager_required
 def database(request):
+    # Уже у оператора / с пометками, или менеджер уже отправил КП.
+    # Не показываем «сырых» new и не дублируем очередь Задач.
     qs = (
         Company.objects
         .exclude(stage__in=["new", "refusal", "success"])
+        .exclude(stage="letter_sent", is_sent_by_manager=False)  # это только Задачи
         .select_related("assigned_to", "team")
         .order_by("-updated_at")
     )
