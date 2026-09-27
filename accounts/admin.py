@@ -6,9 +6,18 @@ from .models import Team, User, UserCapability, AccessAuditLog
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
-    list_display = ("name", "created_at")
-    search_fields = ("name",)
-
+    list_display = ("name", "bot_username", "access_valid_until", "created_at")
+    search_fields = ("name", "bot_username")
+    fields = (
+        "name",
+        "description",
+        "bot_token",
+        "bot_username",
+        "access_password_word",
+        "access_valid_until",
+        "created_at",
+    )
+    readonly_fields = ("created_at",)
 
 class UserCapabilityInline(admin.TabularInline):
     model = UserCapability

@@ -1,0 +1,38 @@
+{% extends "public_site/base.html" %}
+{% block title %}Допомогти зв'язатись{% endblock %}
+
+{% block content %}
+<section class="ps-section">
+  <div class="ps-wrap" style="max-width:34rem;">
+    <p class="ps-eyebrow">Зв'язок</p>
+    <h1 style="font-size:1.9rem; margin-top:.5rem;">Допомогти зв'язатись</h1>
+    <p style="color:var(--color-muted); margin-top:.75rem;">
+      Залиште контакт — менеджер зателефонує і домовиться про деталі.
+      Заявку видно тільки команді центру.
+    </p>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="ps-alert-success">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form class="ps-form" method="post" novalidate>
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="ps-field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <div class="ps-errors">{{ field.errors|striptags }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+      {% if form.non_field_errors %}
+        <div class="ps-errors">{{ form.non_field_errors|striptags }}</div>
+      {% endif %}
+      <button type="submit" class="ps-btn ps-btn-primary">Надіслати</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

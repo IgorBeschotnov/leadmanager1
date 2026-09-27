@@ -20,6 +20,9 @@
             {% if lead.preferred_channel %}
               <span class="badge bg-secondary ms-1">{{ lead.preferred_channel }}</span>
             {% endif %}
+            {% if lead.source == public_form_source %}
+              <span class="badge bg-info-subtle text-info-emphasis ms-1"><i class="bi bi-globe"></i> З сайту</span>
+            {% endif %}
           </div>
           <div class="text-muted small">
             Оновлено: {{ lead.updated_at|date:"d.m.Y H:i" }}
@@ -90,6 +93,37 @@
   </div>
 
   <div class="col-lg-5">
+
+    {% if lead.stage == "new" %}
+    <div class="card mb-3 border-info">
+      <div class="card-header bg-info-subtle fw-semibold">
+        <i class="bi bi-telephone-outbound"></i> Нова заявка
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="start_processing">
+          <div class="mb-2">
+            <label class="form-label small">Результат дзвінка (якщо вже дзвонили)</label>
+            <select name="call_result" class="form-select form-select-sm">
+              <option value="">— поки не дзвонили —</option>
+              <option value="success">Позитивно</option>
+              <option value="call_back">Перезвонити пізніше</option>
+              <option value="refusal">Відмова</option>
+              <option value="wrong_number">Неправильний номер / немає звʼязку</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Коментар</label>
+            <textarea name="call_comment" class="form-control form-control-sm" rows="2"></textarea>
+          </div>
+          <button type="submit" class="btn btn-info w-100">
+            <i class="bi bi-arrow-right-circle"></i> Взяти в опрацювання
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
 
     {% if lead.stage != "success" and lead.stage != "refusal" and lead.stage != "invalid" %}
     <div class="card mb-3 border-success">

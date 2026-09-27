@@ -75,6 +75,34 @@ class User(AbstractUser):
         help_text="Ручной отзыв доступа владельцем (owner override)"
     )
 
+    # --- Публичный сайт (public_site) ---
+    # Явный opt-in: по умолчанию никто не публикуется, чтобы не светить
+    # людей автоматически при создании аккаунта.
+    is_public_profile = models.BooleanField(
+        default=False, verbose_name="Показувати картку на сайті",
+        help_text="Увімкни, щоб людина зʼявилась у блоці «Команда» на публічній сторінці"
+    )
+    public_role_title = models.CharField(
+        max_length=100, blank=True, verbose_name="Посада для сайту",
+        help_text="Людська назва ролі для відвідувачів сайту "
+                   "(наприклад «Куратор напрямку»), а не внутрішній код capability"
+    )
+    public_photo_url = models.URLField(
+        blank=True, verbose_name="Фото — посилання (запасний варіант)",
+        help_text="Використовується, тільки якщо файл нижче не завантажено. "
+                   "Пряме посилання на зображення."
+    )
+    public_photo = models.ImageField(
+        upload_to="staff/", blank=True, null=True,
+        verbose_name="Фото — файл",
+        help_text="Завантаж файл — це пріоритетний варіант. "
+                   "Якщо порожньо — покаже кружечок з першою літерою імені."
+    )
+    public_order = models.PositiveIntegerField(
+        default=0, verbose_name="Порядок на сайті",
+        help_text="Менше число — раніше в списку"
+    )
+
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"

@@ -1,0 +1,127 @@
+{% extends "public_site/base.html" %}
+{% block title %}Наш центр — головна{% endblock %}
+
+{% block content %}
+
+<section class="ps-hero" id="about">
+  <div class="ps-wrap">
+    <p class="ps-eyebrow">Реабілітаційний центр</p>
+    <h1>{{ site_settings.hero_title }}</h1>
+    <p class="lead">{{ site_settings.hero_subtitle }}</p>
+    <div class="ps-hero-actions">
+      <a class="ps-btn ps-btn-primary" href="{% url 'public_site:partner_form' %}">Допомогти зв'язатись</a>
+      <a class="ps-btn ps-btn-outline" href="{% url 'login' %}">Увійти в систему</a>
+    </div>
+
+    <!-- Карусель: стаціонарна, гортається тільки вручну (кнопки/крапки).
+         Слайди редагуються в /admin/public_site/carouselslide/ -->
+    {% if slides %}
+    <div class="ps-carousel" id="psCarousel">
+      <div class="ps-carousel-track" id="psCarouselTrack">
+        {% for slide in slides %}
+        <div class="ps-slide">
+          <p class="ps-eyebrow">{{ forloop.counter|stringformat:"02d" }}</p>
+          <h3>{{ slide.title }}</h3>
+          <p>{{ slide.text }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% if slides|length > 1 %}
+      <button class="ps-carousel-nav prev" type="button" aria-label="Попередній слайд">&#8249;</button>
+      <button class="ps-carousel-nav next" type="button" aria-label="Наступний слайд">&#8250;</button>
+      {% endif %}
+    </div>
+    <div class="ps-carousel-dots" id="psCarouselDots"></div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="ps-section ps-section-alt" id="team">
+  <div class="ps-wrap">
+    <div class="ps-section-head">
+      <p class="ps-eyebrow">Люди</p>
+      <h2>Наша команда</h2>
+      <p>Ті, хто щодня поруч</p>
+    </div>
+
+    {% if staff %}
+    <ul class="ps-team-grid" style="list-style:none; padding:0;">
+      {% for person in staff %}
+      <li class="ps-team-card">
+        <div class="ps-avatar">
+          {% if person.public_photo %}
+            <img src="{{ person.public_photo.url }}" alt="{{ person.name }}">
+          {% elif person.public_photo_url %}
+            <img src="{{ person.public_photo_url }}" alt="{{ person.name }}">
+          {% else %}
+            <span aria-hidden="true">{{ person.name|first|upper }}</span>
+          {% endif %}
+        </div>
+        <div class="name">{{ person.name }}</div>
+        <div class="role">{{ person.public_role_title|default:"Команда центру" }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p style="text-align:center; color:var(--color-muted); margin-top:2rem;">
+      {# Показується, поки жоден User не позначений is_public_profile=True #}
+      Картки команди з'являться тут, щойно менеджер увімкне їх у адмінці.
+    </p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="ps-section">
+  <div class="ps-wrap">
+    <div class="ps-cta">
+      <div>
+        <h2>Хочете допомогти або стати партнером?</h2>
+        <p>Залиште контакт — ми зателефонуємо і домовимось про деталі.</p>
+      </div>
+      <div class="ps-cta-actions">
+        <a class="ps-btn ps-btn-primary" href="{% url 'public_site:partner_form' %}">Допомогти зв'язатись</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Стаціонарна карусель: жодного autoplay, гортання тільки по кліку.
+  (function () {
+    const track = document.getElementById('psCarouselTrack');
+    const dotsBox = document.getElementById('psCarouselDots');
+    const prevBtn = document.querySelector('#psCarousel .ps-carousel-nav.prev');
+    const nextBtn = document.querySelector('#psCarousel .ps-carousel-nav.next');
+    if (!track) return;
+
+    const slides = track.children.length;
+    let index = 0;
+
+    for (let i = 0; i < slides; i++) {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.setAttribute('aria-label', 'Слайд ' + (i + 1));
+      dot.addEventListener('click', () => goTo(i));
+      dotsBox.appendChild(dot);
+    }
+
+    function render() {
+      track.style.transform = `translateX(-${index * 100}%)`;
+      [...dotsBox.children].forEach((d, i) => d.classList.toggle('active', i === index));
+    }
+
+    function goTo(i) {
+      index = (i + slides) % slides;
+      render();
+    }
+
+    prevBtn && prevBtn.addEventListener('click', () => goTo(index - 1));
+    nextBtn && nextBtn.addEventListener('click', () => goTo(index + 1));
+
+    render();
+  })();
+</script>
+{% endblock %}

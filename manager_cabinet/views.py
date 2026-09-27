@@ -7,7 +7,7 @@ from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
-from leads.models import Company, CallLog, DataSource
+from leads.models import Company, CallLog, DataSource, PUBLIC_FORM_SOURCE
 from accounts.models import User
 from .letter_templates import (
     TEMPLATES, render_template, get_templates_list, get_attachment_files
@@ -16,36 +16,6 @@ from .letter_templates import (
 # AI-генерация КП
 from ai.generate import generate_kp
 from ai.client import AIClientError
-from django.views.decorators.http import require_GET  # если ещё нет
-
-@require_GET
-def public_home(request):
-    """Публічна головна — без логіну. Текст/менеджери — заглушка, потім замінимо."""
-    managers = [
-        {
-            "name": "Тетяна",
-            "role": "Керівник команди",
-            "desc": "Координація дзвінків та КП",
-            "avatar": "https://ui-avatars.com/api/?name=Tetiana&background=0d6efd&color=fff&size=128",
-        },
-        {
-            "name": "Олег",
-            "role": "Оператор",
-            "desc": "Перший контакт з лідами",
-            "avatar": "https://ui-avatars.com/api/?name=Oleg&background=198754&color=fff&size=128",
-        },
-        {
-            "name": "Марія",
-            "role": "Менеджер з партнерств",
-            "desc": "Супровід партнерів і листів",
-            "avatar": "https://ui-avatars.com/api/?name=Maria&background=6f42c1&color=fff&size=128",
-        },
-    ]
-    return render(request, "public/home.html", {
-        "managers": managers,
-        "org_name": "Реабілітаційний центр",
-        "org_city": "Шахтарське",
-    })
 
 def manager_required(view_func):
     """Простая проверка: staff + не отозван доступ."""
@@ -89,10 +59,14 @@ def _filter_released(qs, user):
 # ─────────────────────────────────────────────────────────────
 @manager_required
 def tasks(request):
-    # Оператор запросил отправку КП → менеджер обрабатывает по очереди
+    # Оператор запросил отправку КП → менеджер обрабатывает по очереди,
+    # плюс свіжі заявки з публічної форми сайту (ще не взяті в роботу)
     qs = (
         Company.objects
-        .filter(stage="letter_sent", is_sent_by_manager=False)
+        .filter(
+            Q(stage="letter_sent", is_sent_by_manager=False)
+            | Q(source=PUBLIC_FORM_SOURCE, stage="new")
+        )
         .select_related("assigned_to", "team")
         .order_by("updated_at")  # FIFO: дольше ждут — выше
     )
@@ -114,18 +88,10 @@ def tasks(request):
         "templates": get_templates_list(),
         "attachments": get_attachment_files(),
         "search": search,
+        "public_form_source": PUBLIC_FORM_SOURCE,
     }
     return render(request, "manager/tasks.html", context)
 
-    context = {
-        "page": "tasks",
-        "leads": qs,
-        "templates": get_templates_list(),
-        "attachments": get_attachment_files(),
-        "search": search,
-    }
-    return render(request, "manager/tasks.html", context)
-    
 # ─────────────────────────────────────────────────────────────
 # Отчёты
 # ─────────────────────────────────────────────────────────────
@@ -272,6 +238,24 @@ def lead_detail(request, pk):
             )
             return redirect("manager:tasks")
 
+        # --- Взяти в опрацювання (для щойно створених, stage=new — щоб
+        # заявка з публічної форми зникла з "Задач" і почала свій шлях) ---
+        if action == "start_processing":
+            lead.stage = "in_progress"
+            lead.assigned_to = lead.assigned_to or request.user
+            lead.team = lead.team or request.user.team
+            lead.save(update_fields=["stage", "assigned_to", "team", "updated_at"])
+
+            call_result = request.POST.get("call_result", "").strip()
+            call_comment = request.POST.get("call_comment", "").strip()
+            CallLog.objects.create(
+                company=lead,
+                operator=request.user,
+                result=call_result or "call_back",
+                comment=call_comment or "Взято в опрацювання (заявка з сайту)",
+            )
+            return redirect("manager:lead_detail", pk=pk)
+
         if action == "make_partner":
             lead.stage = "success"
             lead.save(update_fields=["stage", "updated_at"])
@@ -331,6 +315,7 @@ def lead_detail(request, pk):
         "call_logs": call_logs,
         "templates": get_templates_list(),
         "attachments": get_attachment_files(),
+        "public_form_source": PUBLIC_FORM_SOURCE,
     }
     return render(request, "manager/lead_detail.html", context)
 
@@ -501,30 +486,3 @@ def operators_list(request):
         "operators": operators,
     }
     return render(request, "manager/operators_list.html", context)
-@require_GET
-def public_home(request):
-    managers = [
-        {
-            "name": "Тетяна",
-            "role": "Керівник команди",
-            "desc": "Координація дзвінків та КП",
-            "avatar": "https://ui-avatars.com/api/?name=Tetiana&background=0d6efd&color=fff&size=128",
-        },
-        {
-            "name": "Олег",
-            "role": "Оператор",
-            "desc": "Перший контакт з лідами",
-            "avatar": "https://ui-avatars.com/api/?name=Oleg&background=198754&color=fff&size=128",
-        },
-        {
-            "name": "Марія",
-            "role": "Менеджер з партнерств",
-            "desc": "Супровід партнерів і листів",
-            "avatar": "https://ui-avatars.com/api/?name=Maria&background=6f42c1&color=fff&size=128",
-        },
-    ]
-    return render(request, "public/home.html", {
-        "managers": managers,
-        "org_name": "Реабілітаційний центр",
-        "org_city": "Шахтарське",
-    })

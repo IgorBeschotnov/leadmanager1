@@ -1,0 +1,87 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_settings.org_name }}{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'public_site/site.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="ps-body">
+
+  <header class="ps-header">
+    <div class="ps-wrap ps-header-inner">
+      <a class="ps-brand" href="{% url 'public_site:home' %}">{{ site_settings.org_name }}</a>
+      <nav class="ps-nav" aria-label="Основне меню">
+        <a href="{% url 'public_site:home' %}#about">Про нас</a>
+        <a href="{% url 'public_site:home' %}#team">Команда</a>
+        <a href="{% url 'public_site:home' %}#contacts">Контакти</a>
+        <a href="{% url 'public_site:partner_form' %}">Допомогти зв'язатись</a>
+      </nav>
+      <div class="ps-header-actions">
+        <a class="ps-btn ps-btn-outline" href="{% url 'login' %}">Увійти</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="ps-footer" id="contacts">
+    <div class="ps-wrap ps-footer-inner">
+      <div>
+        <div class="ps-brand" style="font-size:1.1rem;">{{ site_settings.org_name }}</div>
+        {% if site_settings.footer_about %}
+        <p style="color:var(--color-muted); margin-top:.75rem; max-width:26rem;">
+          {{ site_settings.footer_about }}
+        </p>
+        {% endif %}
+        <div class="ps-socials" style="margin-top:1.1rem;">
+          {% if site_settings.tiktok_url %}
+          <a class="ps-social" href="{{ site_settings.tiktok_url }}" target="_blank" rel="noopener" aria-label="TikTok">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.2 3.2c.6 3.2 2.4 4.7 5.1 5v3.1c-1.7 0-3.2-.5-5-1.6v6.6c0 3.6-2.6 5.9-6.1 5.9S2.2 19.9 2.2 16.3c0-3.4 2.6-5.8 6.2-5.8.4 0 .9 0 1.3.1v3.2c-.4-.2-.8-.3-1.3-.3-1.8 0-3 1.2-3 2.8s1.2 2.9 3 2.9 2.9-1.2 2.9-3.1V3.2h2.9Z"/></svg>
+          </a>
+          {% endif %}
+          {% if site_settings.facebook_url %}
+          <a class="ps-social" href="{{ site_settings.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.5 8.5h2.2V5.6h-2.2c-2.6 0-4.3 1.6-4.3 4.4v1.7H8.3v2.9h1.9V21h3.2v-6.4h2.4l.5-2.9h-2.9V10c0-.9.4-1.5 1.1-1.5Z"/></svg>
+          </a>
+          {% endif %}
+          {% if site_settings.instagram_url %}
+          <a class="ps-social" href="{{ site_settings.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><circle cx="17.2" cy="6.8" r="1" fill="currentColor"/></svg>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      <div>
+        <p class="ps-eyebrow">Навігація</p>
+        <ul style="list-style:none; padding:0; margin-top:1rem; display:flex; flex-direction:column; gap:.5rem;">
+          <li><a href="{% url 'public_site:home' %}#about">Про нас</a></li>
+          <li><a href="{% url 'public_site:home' %}#team">Команда</a></li>
+          <li><a href="{% url 'public_site:partner_form' %}">Допомогти зв'язатись</a></li>
+          <li><a href="{% url 'login' %}">Увійти</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="ps-eyebrow">Контакти</p>
+        <address style="margin-top:1rem; font-style:normal;">
+          {% if site_settings.address %}<p>{{ site_settings.address }}</p>{% endif %}
+          {% if site_settings.phone %}<p><a href="tel:{{ site_settings.phone }}">{{ site_settings.phone }}</a></p>{% endif %}
+          {% if site_settings.email %}<p><a href="mailto:{{ site_settings.email }}">{{ site_settings.email }}</a></p>{% endif %}
+          {% if not site_settings.address and not site_settings.phone and not site_settings.email %}<p>—</p>{% endif %}
+        </address>
+      </div>
+    </div>
+    <div class="ps-footer-bottom">
+      <div class="ps-wrap">© {% now "Y" %} {{ site_settings.org_name }}</div>
+    </div>
+  </footer>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

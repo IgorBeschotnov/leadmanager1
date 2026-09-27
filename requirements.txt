@@ -1,3 +1,4 @@
 Django>=5.0,<6.0
+Pillow>=10.0
 # python-telegram-bot / requests и т.п. — добавь при переносе bot.py из старого проекта
 requests>=2.28

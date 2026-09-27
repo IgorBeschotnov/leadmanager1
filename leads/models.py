@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+PUBLIC_FORM_SOURCE = "Заявка з сайту"
 
 class Category(models.Model):
     """Вид деятельности компании. Многие-ко-многим на Company —
