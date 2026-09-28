@@ -18,41 +18,92 @@ from ai.generate import generate_kp
 from ai.client import AIClientError
 
 def manager_required(view_func):
-    """Простая проверка: staff + не отозван доступ."""
+    """staff + не отозван + не servant-only."""
     @login_required
     @staff_member_required
     def _wrapped(request, *args, **kwargs):
         if getattr(request.user, "access_revoked", False):
             return HttpResponseForbidden("Доступ відкликано")
+        if getattr(request.user, "is_servant_only", lambda: False)():
+            return HttpResponseForbidden("Роль «служитель» не має доступу до кабінету")
         return view_func(request, *args, **kwargs)
     return _wrapped
 
 
 def _is_owner(user) -> bool:
+    if hasattr(user, "is_owner"):
+        return user.is_owner()
     return user.capabilities.filter(capability="owner").exists()
 
 
 def _filter_by_team(qs, user):
-    """Ізоляція по команді. Owner бачить усе."""
+    """Только назначенные team=user.team. Сырые — через _filter_released_raw."""
     if _is_owner(user):
         return qs
     if getattr(user, "team_id", None):
-        return qs.filter(Q(team=user.team) | Q(team__isnull=True))
+        return qs.filter(team=user.team)
     return qs.none()
 
 
-def _filter_released(qs, user):
+def _filter_released_raw(qs, user):
+    """Сырые (team=NULL) только из открытых DataSource."""
     if _is_owner(user):
-        return qs
+        return qs.filter(team__isnull=True)
     team = getattr(user, "team", None)
     if not team:
-        return qs.filter(Q(source__isnull=True) | Q(source=""))
-    released_keys = (
+        return qs.none()
+    released_keys = list(
         DataSource.objects.filter(teams=team).values_list("key", flat=True)
     )
-    return qs.filter(
-        Q(source__in=released_keys) | Q(source__isnull=True) | Q(source="")
+    if not released_keys:
+        return qs.none()
+    return qs.filter(team__isnull=True, source__in=released_keys)
+
+
+def _visible_leads_qs(user):
+    base = Company.objects.all()
+    if _is_owner(user):
+        return base
+    return (_filter_by_team(base, user) | _filter_released_raw(base, user)).distinct()
+
+
+def _user_can_see_lead(user, lead) -> bool:
+    if _is_owner(user):
+        return True
+    if not getattr(user, "team_id", None):
+        return False
+    if lead.team_id == user.team_id:
+        return True
+    if lead.team_id is None and lead.source:
+        return DataSource.objects.filter(key=lead.source, teams=user.team).exists()
+    return False
+
+
+def _get_lead_or_403(user, pk):
+    lead = get_object_or_404(
+        Company.objects.select_related("assigned_to", "team"), pk=pk
     )
+    if not _user_can_see_lead(user, lead):
+        from django.http import Http404
+        raise Http404("Лід не знайдено або немає доступу")
+    return lead
+
+
+def _filter_users_by_team(qs, user):
+    if _is_owner(user):
+        return qs
+    if getattr(user, "team_id", None):
+        return qs.filter(team=user.team)
+    return qs.none()
+
+
+def _filter_calllogs_by_team(qs, user):
+    if _is_owner(user):
+        return qs
+    if getattr(user, "team_id", None):
+        return qs.filter(company__team=user.team)
+    return qs.none()
+
 
 # ─────────────────────────────────────────────────────────────
 # Список задач (letter_sent + is_sent_by_manager=False)
@@ -70,8 +121,8 @@ def tasks(request):
         .select_related("assigned_to", "team")
         .order_by("updated_at")  # FIFO: дольше ждут — выше
     )
-    qs = _filter_by_team(qs, request.user)
-    qs = _filter_released(qs, request.user)
+    if not _is_owner(request.user):
+        qs = _visible_leads_qs(request.user).filter(pk__in=qs.values_list('pk', flat=True))
 
     search = request.GET.get("q", "").strip()
     if search:
@@ -99,9 +150,14 @@ def tasks(request):
 def reports(request):
     since = timezone.now() - timedelta(days=30)
 
+    call_qs = CallLog.objects.filter(
+        created_at__gte=since,
+        event_type=CallLog.EventType.CALL,
+    )
+    call_qs = _filter_calllogs_by_team(call_qs, request.user)
+
     operators_stats = (
-        CallLog.objects
-        .filter(created_at__gte=since)
+        call_qs
         .values("operator_id", "operator__first_name", "operator__last_name", "operator__username")
         .annotate(
             total=Count("id"),
@@ -114,7 +170,7 @@ def reports(request):
     )
 
     recent_calls = (
-        CallLog.objects
+        call_qs
         .select_related("company", "operator")
         .order_by("-created_at")[:40]
     )
@@ -141,8 +197,8 @@ def database(request):
         .select_related("assigned_to", "team")
         .order_by("-updated_at")
     )
-    qs = _filter_by_team(qs, request.user)
-    qs = _filter_released(qs, request.user)
+    if not _is_owner(request.user):
+        qs = _visible_leads_qs(request.user).filter(pk__in=qs.values_list('pk', flat=True))
 
     search = request.GET.get("q", "").strip()
     if search:
@@ -177,8 +233,8 @@ def partners(request):
         .select_related("assigned_to", "team")
         .order_by("-updated_at")
     )
-    qs = _filter_by_team(qs, request.user)
-    qs = _filter_released(qs, request.user)
+    if not _is_owner(request.user):
+        qs = _visible_leads_qs(request.user).filter(pk__in=qs.values_list('pk', flat=True))
 
     search = request.GET.get("q", "").strip()
     if search:
@@ -201,11 +257,34 @@ def partners(request):
 # Карточка лида
 # ─────────────────────────────────────────────────────────────
 @manager_required
+def processed(request):
+    """Архив: отправленные КП, просроченный callback, партнёры.
+    refusal/invalid менеджеру не показываем."""
+    now = timezone.now()
+    qs = Company.objects.filter(
+        Q(stage="letter_sent", is_sent_by_manager=True)
+        | Q(stage="in_progress", callback_date__lt=now)
+        | Q(stage="success")
+    ).select_related("assigned_to", "team").order_by("-updated_at")
+    if not _is_owner(request.user):
+        qs = _filter_by_team(qs, request.user)
+    search = request.GET.get("q", "").strip()
+    if search:
+        qs = qs.filter(
+            Q(name__icontains=search)
+            | Q(city__icontains=search)
+            | Q(phones__icontains=search)
+        )
+    return render(request, "manager/database.html", {
+        "page": "processed",
+        "leads": qs[:200],
+        "search": search,
+    })
+
+
+@manager_required
 def lead_detail(request, pk):
-    lead = get_object_or_404(
-        Company.objects.select_related("assigned_to", "team"),
-        pk=pk
-    )
+    lead = _get_lead_or_403(request.user, pk)
     call_logs = lead.call_logs.select_related("operator").order_by("-created_at")
 
     if request.method == "POST":
@@ -233,7 +312,8 @@ def lead_detail(request, pk):
             CallLog.objects.create(
                 company=lead,
                 operator=request.user,
-                result="success",
+                event_type=CallLog.EventType.PROPOSAL_SENT,
+                result="info",
                 comment="КП відправлено менеджером" + (f" ({extra})" if extra else ""),
             )
             return redirect("manager:tasks")
@@ -251,8 +331,16 @@ def lead_detail(request, pk):
             CallLog.objects.create(
                 company=lead,
                 operator=request.user,
+                event_type=CallLog.EventType.CALL,
                 result=call_result or "call_back",
                 comment=call_comment or "Взято в опрацювання (заявка з сайту)",
+            )
+            CallLog.objects.create(
+                company=lead,
+                operator=request.user,
+                event_type=CallLog.EventType.STAGE_CHANGED,
+                result="info",
+                comment="stage → in_progress",
             )
             return redirect("manager:lead_detail", pk=pk)
 
@@ -263,6 +351,7 @@ def lead_detail(request, pk):
             CallLog.objects.create(
                 company=lead,
                 operator=request.user,
+                event_type=CallLog.EventType.STAGE_CHANGED,
                 result="success",
                 comment="Переведено в партнери",
             )
@@ -290,6 +379,7 @@ def lead_detail(request, pk):
                 CallLog.objects.create(
                     company=lead,
                     operator=request.user,
+                    event_type=CallLog.EventType.PARTNER_HELP,
                     result="success",
                     comment=f"Зафіксовано допомогу партнера: {extra}",
                 )
@@ -302,7 +392,8 @@ def lead_detail(request, pk):
             CallLog.objects.create(
                 company=lead,
                 operator=request.user,
-                result="success",
+                event_type=CallLog.EventType.TEMPLATE_GENERATED,
+                result="info",
                 comment=f"[Шаблон: {TEMPLATES.get(template_key, {}).get('name', template_key)}]\n\n{text}",
             )
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -338,7 +429,7 @@ def ai_generate_kp(request, pk):
       manager_name   = ім'я менеджера
       manager_phone  = телефон менеджера
     """
-    lead = get_object_or_404(Company, pk=pk)
+    lead = _get_lead_or_403(request.user, pk)
 
     channel = request.POST.get("channel", "email")
     tone = request.POST.get("tone", "official")
@@ -388,7 +479,7 @@ def template_preview(request, key):
     if not company_id:
         return JsonResponse({"error": "company_id required"}, status=400)
 
-    company = get_object_or_404(Company, pk=company_id)
+    company = _get_lead_or_403(request.user, int(company_id))
     text = render_template(key, company, operator_name=request.user.name)
     return JsonResponse({
         "text": text,
@@ -402,8 +493,13 @@ def template_preview(request, key):
 @manager_required
 def operator_detail(request, pk):
     operator = get_object_or_404(User, pk=pk)
+    if not _is_owner(request.user):
+        if operator.team_id != getattr(request.user, "team_id", None):
+            return HttpResponseForbidden("Немає доступу до оператора іншої команди")
 
-    stats = CallLog.objects.filter(operator=operator).aggregate(
+    stats = CallLog.objects.filter(
+        operator=operator, event_type=CallLog.EventType.CALL
+    ).aggregate(
         total=Count("id"),
         success=Count("id", filter=Q(result="success")),
         refusal=Count("id", filter=Q(result="refusal")),
@@ -415,11 +511,15 @@ def operator_detail(request, pk):
         assigned_to=operator,
         stage__in=["in_progress", "letter_sent"]
     ).order_by("-updated_at")
+    if not _is_owner(request.user):
+        active_leads = active_leads.filter(team=request.user.team)
 
     partner_leads = Company.objects.filter(
         assigned_to=operator,
         stage="success"
     ).order_by("-updated_at")[:20]
+    if not _is_owner(request.user):
+        partner_leads = partner_leads.filter(team=request.user.team)
 
     context = {
         "page": "operator",
@@ -460,6 +560,7 @@ def lead_create(request):
             CallLog.objects.create(
                 company=lead,
                 operator=request.user,
+                event_type=CallLog.EventType.CALL,
                 result=call_result,
                 comment=call_comment or None,
             )
@@ -480,6 +581,7 @@ def operators_list(request):
     operators = User.objects.filter(
         capabilities__capability="operator"
     ).distinct().order_by("first_name", "username")
+    operators = _filter_users_by_team(operators, request.user)
 
     context = {
         "page": "operators",

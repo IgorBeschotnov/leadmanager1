@@ -3,9 +3,9 @@ from django.db import models
 
 PUBLIC_FORM_SOURCE = "Заявка з сайту"
 
+
 class Category(models.Model):
-    """Вид деятельности компании. Многие-ко-многим на Company —
-    один лид может подходить под несколько категорий КП."""
+    """10–20 категорий достаточно (не КВЭД). Наполнение через админку."""
     name = models.CharField(max_length=100, unique=True, verbose_name="Название категории")
 
     class Meta:
@@ -19,7 +19,6 @@ class Category(models.Model):
 class Company(models.Model):
     name = models.CharField(max_length=255, verbose_name="Название компании")
 
-    # --- Классификация ---
     categories = models.ManyToManyField(
         Category, blank=True, related_name="companies",
         verbose_name="Виды деятельности"
@@ -28,16 +27,11 @@ class Company(models.Model):
     region = models.CharField(max_length=100, blank=True, null=True, verbose_name="Область/регион")
     website = models.URLField(blank=True, null=True, verbose_name="Сайт")
 
-    # Телефоны и почты — плоским текстом, несколько штук через запятую.
-    # Полноценная нормализация (разбивка на отдельные записи) — задача
-    # внешнего скрипта позже, когда база будет большой. phone_normalized
-    # ниже — минимальный дедуп-помощник, а не замена этой задачи.
     phones = models.CharField(max_length=500, blank=True, null=True, verbose_name="Телефон(ы)")
     phone_normalized = models.CharField(
         max_length=32, blank=True, null=True, db_index=True,
         verbose_name="Телефон (нормализованный)",
-        help_text="Только цифры из первого номера в phones. Для мягкой сверки "
-                   "дублей на этапе тёплого звонка — без строгого unique."
+        help_text="Только цифры из первого номера. Мягкий дедуп."
     )
     emails = models.CharField(max_length=500, blank=True, null=True, verbose_name="Email(ы)")
     contact_person = models.CharField(
@@ -48,8 +42,6 @@ class Company(models.Model):
         max_length=255, blank=True, null=True,
         verbose_name="Источник данных"
     )
-    # откуда взят лид: сайт/скрапер + регион, например
-    # "business-guide.com.ua — Вінницька область". Заполняется импортёрами/скраперами.
 
     internal_notes = models.TextField(
         blank=True, null=True,
@@ -66,7 +58,8 @@ class Company(models.Model):
     )
     callback_date = models.DateTimeField(
         blank=True, null=True,
-        verbose_name="Дата авто-перезвона (+3 дня)"
+        verbose_name="Дата перезвона",
+        help_text="По умолчанию +3 дня после КП; менеджер может менять."
     )
 
     STAGE_CHOICES = [
@@ -82,10 +75,6 @@ class Company(models.Model):
         verbose_name="Статус воронки"
     )
 
-    # --- Команда и ответственный ---
-    # Новый лид создаётся с team=None (сырой пул). Team проставляется,
-    # когда конкретный менеджер создаёт по лиду карточку — и дальше
-    # неизменна (см. save()), кроме owner override.
     team = models.ForeignKey(
         "accounts.Team",
         on_delete=models.PROTECT, null=True, blank=True,
@@ -111,7 +100,6 @@ class Company(models.Model):
 
     @property
     def first_phone(self):
-        """Первый номер из строки — то, что раньше давал contacts.first().phone."""
         if not self.phones:
             return None
         return self.phones.split(',')[0].strip()
@@ -140,13 +128,29 @@ class Company(models.Model):
 
 
 class CallLog(models.Model):
+    """Универсальная история. Статистика звонков = только event_type=call."""
+
+    class EventType(models.TextChoices):
+        CALL = "call", "Звонок"
+        TEMPLATE_GENERATED = "template_generated", "Шаблон сгенерирован"
+        PROPOSAL_SENT = "proposal_sent", "КП отправлено"
+        STAGE_CHANGED = "stage_changed", "Смена статуса"
+        PARTNER_HELP = "partner_help", "Помощь партнёра"
+
     company = models.ForeignKey(
         Company, on_delete=models.CASCADE,
         related_name="call_logs", verbose_name="Компания"
     )
     operator = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
-        verbose_name="Оператор"
+        verbose_name="Оператор / автор"
+    )
+    event_type = models.CharField(
+        max_length=30,
+        choices=EventType.choices,
+        default=EventType.CALL,
+        db_index=True,
+        verbose_name="Тип события",
     )
 
     RESULT_CHOICES = [
@@ -154,42 +158,46 @@ class CallLog(models.Model):
         ('call_back', 'Перезвонить позже'),
         ('refusal', 'Отказ'),
         ('wrong_number', 'Неправильный номер / Нет связи'),
+        ('info', 'Информация / служебное'),
     ]
-    result = models.CharField(max_length=30, choices=RESULT_CHOICES, verbose_name="Результат звонка")
-    comment = models.TextField(blank=True, null=True, verbose_name="Комментарий оператора")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Время звонка")
+    result = models.CharField(
+        max_length=30, choices=RESULT_CHOICES, default="info",
+        verbose_name="Результат"
+    )
+    comment = models.TextField(blank=True, null=True, verbose_name="Комментарий")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Время")
 
     class Meta:
-        verbose_name = "История звонка"
-        verbose_name_plural = "История звонков"
+        verbose_name = "История события"
+        verbose_name_plural = "История событий"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["event_type", "created_at"]),
+        ]
 
     def __str__(self):
-        return f"Звонок в {self.company.name} — {self.get_result_display()} ({self.created_at.strftime('%d.%m %H:%M')})"
+        return (
+            f"{self.get_event_type_display()} → {self.company.name} "
+            f"({self.created_at.strftime('%d.%m %H:%M')})"
+        )
 
 
 class DataSource(models.Model):
     """
-    Источник базы (значение Company.source).
-    Открыт для тех Team, которые указаны в teams.
-    Пустой teams = закрыт для всех (кроме owner).
+    Источник базы. Открыт для Team в teams.
+    Сырые (team=NULL) видны команде только после открытия source.
+    Две команды могут брать из одной базы; чужие team не трогают.
     """
     key = models.CharField(
-        max_length=255,
-        unique=True,
+        max_length=255, unique=True,
         verbose_name="Ключ источника",
         help_text="Должен совпадать с Company.source",
     )
-    title = models.CharField(
-        max_length=255,
-        blank=True,
-        verbose_name="Название (для удобства)",
-    )
+    title = models.CharField(max_length=255, blank=True, verbose_name="Название")
     teams = models.ManyToManyField(
-        "accounts.Team",
-        blank=True,
-        related_name="data_sources",
+        "accounts.Team", blank=True, related_name="data_sources",
         verbose_name="Открыт для команд",
-        help_text="Пусто = закрыт для всех. Добавь команду — она увидит лиды.",
+        help_text="Пусто = закрыт для всех.",
     )
     notes = models.TextField(blank=True, verbose_name="Заметки")
     created_at = models.DateTimeField(auto_now_add=True)

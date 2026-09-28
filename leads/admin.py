@@ -35,8 +35,8 @@ class CompanyAdmin(admin.ModelAdmin):
 
 @admin.register(CallLog)
 class CallLogAdmin(admin.ModelAdmin):
-    list_display = ("company", "operator", "result", "created_at")
-    list_filter = ("result",)
+    list_display = ("company", "operator", "event_type", "result", "created_at")
+    list_filter = ("event_type", "result")
 
 
 @admin.register(DataSource)

@@ -60,14 +60,17 @@ waiting_for_comment: dict[int, tuple[int, int]] = {}
 # ─────────────────────────────────────────────────────────────
 # Оператори з БД
 # ─────────────────────────────────────────────────────────────
-def get_operators_qs():
-    """Користувачі з роллю operator (і бажано з telegram_id)."""
-    return (
+def get_operators_qs(team=None):
+    """Оператори. Якщо team задано — тільки цієї команди (ізоляція)."""
+    qs = (
         User.objects
         .filter(capabilities__capability="operator", access_revoked=False)
         .distinct()
         .order_by("first_name", "username")
     )
+    if team is not None:
+        qs = qs.filter(team=team)
+    return qs
 
 
 def get_operator_by_telegram(telegram_id: int | str):
@@ -107,17 +110,18 @@ def get_operator_user(chat_id: int, from_user_id: int | None = None):
             current_operator[chat_id] = user.pk
             return user, (user.name or user.username)
 
-    user = get_operators_qs().first()
-    if user:
-        current_operator[chat_id] = user.pk
-        return user, (user.name or user.username)
-
+    # Без «першого оператора в системі» — інакше чужа команда.
     return None, "—"
 
 def get_new_lead_for_operator(user):
     """
-    Новый лид только из источников, открытых для команды оператора.
-    team у оператора обязателен.
+    Новый лид для оператора:
+    - только stage=new
+    - team у оператора обязателен
+    - сырые (team=NULL) ТОЛЬКО из DataSource, открытых команде
+    - лиды другой команды НЕ выдаём
+    - пустой source без DataSource команде не отдаём (это не «открытая база»)
+    При выдаче team проставляется в handle_lead_request.
     """
     team = getattr(user, "team", None)
     if not team:
@@ -126,25 +130,29 @@ def get_new_lead_for_operator(user):
     released_keys = list(
         DataSource.objects.filter(teams=team).values_list("key", flat=True)
     )
+    if not released_keys:
+        return None
 
-    # Сырой пул (team пустой) или уже этой команды; статус new
     qs = (
         Company.objects
         .filter(stage="new")
-        .filter(Q(team__isnull=True) | Q(team=team))
-    )
-
-    if released_keys:
-        qs = qs.filter(
-            Q(source__in=released_keys)
-            | Q(source__isnull=True)
-            | Q(source="")
+        .filter(
+            # сырой пул из открытых источников ИЛИ уже нашей команды
+            Q(team__isnull=True, source__in=released_keys)
+            | Q(team=team)
         )
-    else:
-        # Нет открытых источников — только лиды без source
-        qs = qs.filter(Q(source__isnull=True) | Q(source=""))
-
+        # чужие team исключены автоматически
+    )
     return qs.order_by("created_at").first()
+
+
+def operator_can_touch_lead(user, company) -> bool:
+    """Оператор трогает только лиды своей команды (или сырые до назначения)."""
+    if not user or not getattr(user, "team_id", None):
+        return False
+    if company.team_id is None:
+        return True  # ещё не назначен — будет назначен при действии
+    return company.team_id == user.team_id
 # ─────────────────────────────────────────────────────────────
 # Клавіатури
 # ─────────────────────────────────────────────────────────────
@@ -158,9 +166,10 @@ def get_main_menu():
     return markup
 
 
-def get_operator_select_markup():
+def get_operator_select_markup(for_user=None):
     markup = types.InlineKeyboardMarkup(row_width=1)
-    for op in get_operators_qs():
+    team = getattr(for_user, "team", None) if for_user else None
+    for op in get_operators_qs(team=team):
         label = op.name or op.username
         extra = f" (tg:{op.telegram_id})" if op.telegram_id else ""
         markup.add(types.InlineKeyboardButton(
@@ -209,8 +218,10 @@ def get_note_only_markup(company_id: int):
 
 def send_lead_card(chat_id: int, company: Company, operator_name: str):
     phone = company.first_phone or "Телефон не указан"
+    team_name = company.team.name if company.team_id else "—"
     card_text = (
         f"👤 **Оператор:** {operator_name}\n"
+        f"🏷 **Команда:** {team_name}\n"
         f"🏢 **Компания:** {company.name}\n"
         f"📍 **Город:** {company.city or 'Не указан'}\n"
         f"📞 **Телефон:** `{phone}`"
@@ -269,41 +280,62 @@ def handle_lead_request(message):
         message.chat.id, from_user_id=message.from_user.id
     )
     if not user_obj:
-        bot.send_message(message.chat.id, "Спочатку налаштуй операторів у адмінці.")
+        bot.send_message(
+            message.chat.id,
+            "Спочатку /start і прив’яжіть telegram_id оператора в адмінці.",
+        )
+        return
+    if not user_obj.team_id:
+        bot.send_message(
+            message.chat.id,
+            "У оператора не вказана команда. Зверніться до власника.",
+        )
         return
 
-            company = get_new_lead_for_operator(user_obj)
+    is_new = message.text == "📞 Прислать новый лид"
+
+    if is_new:
+        company = get_new_lead_for_operator(user_obj)
         if not company:
             bot.send_message(
                 message.chat.id,
                 "🎉 Немає нових лідів для Вашої команди "
-                "(перевірте відкриті джерела в адмінці).",
+                "(перевірте відкриті джерела DataSource в адмінці).",
                 reply_markup=get_main_menu(),
             )
             return
         company.stage = "in_progress"
         company.assigned_to = user_obj
-        if user_obj.team_id and not company.team_id:
+        if not company.team_id:
             company.team = user_obj.team
         company.save()
+        CallLog.objects.create(
+            company=company,
+            operator=user_obj,
+            event_type=CallLog.EventType.STAGE_CHANGED,
+            result="info",
+            comment=f"Взято в роботу через бот. Оператор: {operator_name}",
+        )
     else:
+        # Повторний дозвон: тільки ліди СВОЄЇ команди
+        # in_progress / letter_sent з callback, або letter_sent вже відправлені
+        from django.utils import timezone
+        now = timezone.now()
         company = (
             Company.objects
-            .filter(stage="in_progress", assigned_to=user_obj)
-            .order_by("updated_at")
+            .filter(team=user_obj.team)
+            .filter(
+                Q(stage="in_progress", assigned_to=user_obj)
+                | Q(stage="in_progress", callback_date__lte=now)
+                | Q(stage="letter_sent", is_sent_by_manager=True)
+            )
+            .order_by("callback_date", "updated_at")
             .first()
         )
         if not company:
-            company = (
-                Company.objects
-                .filter(stage="in_progress")
-                .order_by("updated_at")
-                .first()
-            )
-        if not company:
             bot.send_message(
                 message.chat.id,
-                "📭 Немає лідів на повторний дозвон.",
+                "📭 Немає лідів на повторний дозвон у Вашій команді.",
                 reply_markup=get_main_menu(),
             )
             return
@@ -379,6 +411,14 @@ def handle_callbacks(call):
         user_obj, operator_name = get_operator_user(
             call.message.chat.id, from_user_id=call.from_user.id
         )
+        if not user_obj or not operator_can_touch_lead(user_obj, company):
+            bot.answer_callback_query(call.id, "Немає доступу до цього ліда")
+            return
+        # якщо сирий — закріпити за командою
+        if company.team_id is None and user_obj.team_id:
+            company.team = user_obj.team
+            company.assigned_to = company.assigned_to or user_obj
+            company.save(update_fields=["team", "assigned_to", "updated_at"])
 
         if sub_action == "noanswer":
             company.stage = "in_progress"
@@ -386,6 +426,7 @@ def handle_callbacks(call):
             CallLog.objects.create(
                 company=company,
                 operator=user_obj,
+                event_type=CallLog.EventType.CALL,
                 result="call_back",
                 comment="Нет ответа (перенесено на повтор)",
             )
@@ -396,8 +437,16 @@ def handle_callbacks(call):
             CallLog.objects.create(
                 company=company,
                 operator=user_obj,
+                event_type=CallLog.EventType.CALL,
                 result="refusal",
                 comment="Не звонить / Отказ",
+            )
+            CallLog.objects.create(
+                company=company,
+                operator=user_obj,
+                event_type=CallLog.EventType.STAGE_CHANGED,
+                result="info",
+                comment="stage → refusal",
             )
             text_res = f"🚫 Компания в статусе 'Не звонить'. Оператор: {operator_name}."
 
@@ -445,6 +494,12 @@ def handle_callbacks(call):
         user_obj, operator_name = get_operator_user(
             call.message.chat.id, from_user_id=call.from_user.id
         )
+        if not user_obj or not operator_can_touch_lead(user_obj, company):
+            bot.answer_callback_query(call.id, "Немає доступу до цього ліда")
+            return
+        if company.team_id is None and user_obj.team_id:
+            company.team = user_obj.team
+            company.assigned_to = company.assigned_to or user_obj
 
         channel_names = {
             "tg": "Telegram",
@@ -462,6 +517,7 @@ def handle_callbacks(call):
         CallLog.objects.create(
             company=company,
             operator=user_obj,
+            event_type=CallLog.EventType.STAGE_CHANGED,
             result="success",
             comment=(
                 f"Запит на відправку КП через {chosen}. "
@@ -493,10 +549,14 @@ def save_comment_text(message):
 
     company = Company.objects.get(id=company_id)
     user_obj, operator_name = get_operator_user(chat_id, from_user_id=user_id)
+    if not user_obj or not operator_can_touch_lead(user_obj, company):
+        bot.send_message(message.chat.id, "Немає доступу до цього ліда.")
+        return
 
     CallLog.objects.create(
         company=company,
         operator=user_obj,
+        event_type=CallLog.EventType.CALL,
         result="call_back",
         comment=f"Примітка оператора ({operator_name}): {message.text}",
     )

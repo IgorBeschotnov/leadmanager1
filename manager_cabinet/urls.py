@@ -8,6 +8,7 @@ urlpatterns = [
     path("reports/", views.reports, name="reports"),
     path("database/", views.database, name="database"),
     path("partners/", views.partners, name="partners"),
+    path("processed/", views.processed, name="processed"),
     path("templates/", views.templates_list, name="templates"),
     path("templates/<str:key>/preview/", views.template_preview, name="template_preview"),
     path("lead/<int:pk>/", views.lead_detail, name="lead_detail"),
