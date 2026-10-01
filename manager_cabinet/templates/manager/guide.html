@@ -1,0 +1,67 @@
+{% extends "manager/base.html" %}
+
+{% block title %}Як працює LeadManager{% endblock %}
+{% block page_title %}Як працює LeadManager{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0" style="max-width: 1120px">
+  <section class="card border-0 overflow-hidden mb-4" style="background:linear-gradient(120deg,#12304a,#245b72);color:#fff">
+    <div class="card-body p-4 p-lg-5">
+      <div class="small text-uppercase fw-semibold opacity-75 mb-2">Невеликий гід по роботі</div>
+      <h1 class="h2 fw-bold">Жодна добра розмова не має загубитися.</h1>
+      <p class="mb-0 fs-5" style="max-width:760px">LeadManager допомагає пам’ятати, кому ми обіцяли передзвонити, що вже надіслали й чим можемо бути корисні партнерам. Тут є і людська сторона роботи, і прості кроки в системі.</p>
+    </div>
+  </section>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4"><a class="card h-100 text-decoration-none text-dark" href="{% url 'manager:tasks' %}"><div class="card-body"><i class="bi bi-list-check fs-3 text-primary"></i><h2 class="h5 mt-3">Почніть із «Задач»</h2><p class="text-muted mb-0">Тут зібрані нові звернення та дії, строк яких настав. Відкрийте картку й зафіксуйте наступний крок.</p></div></a></div>
+    <div class="col-md-4"><a class="card h-100 text-decoration-none text-dark" href="{% url 'manager:database' %}"><div class="card-body"><i class="bi bi-buildings fs-3 text-primary"></i><h2 class="h5 mt-3">У картці — контекст</h2><p class="text-muted mb-0">Перевірте контакти, адресу, історію і нотатки. Після розмови виберіть наступну дію та дату.</p></div></a></div>
+    <div class="col-md-4"><a class="card h-100 text-decoration-none text-dark" href="{% url 'manager:partners' %}"><div class="card-body"><i class="bi bi-heart fs-3 text-primary"></i><h2 class="h5 mt-3">Партнерство триває</h2><p class="text-muted mb-0">Подякуйте за рекомендацію чи допомогу, збережіть важливе й заплануйте доречний контакт.</p></div></a></div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <section class="card mb-4"><div class="card-body p-4">
+        <h2 class="h4"><i class="bi bi-arrow-repeat text-primary me-2"></i>Шлях одного ліда</h2>
+        <ol class="ps-3 mb-0">
+          <li class="mb-3"><strong>Звернення потрапляє в систему.</strong> Новий лід може прийти з публічної форми або бути доданий менеджером. Нові звернення чекають у «Задачах».</li>
+          <li class="mb-3"><strong>Після розмови зафіксуйте результат.</strong> Вкажіть, чи домовилися про КП, потрібен повторний дзвінок, компанія відмовилася або контакт виявився помилковим. Для відмови не плануйте нових контактів.</li>
+          <li class="mb-3"><strong>Домовленість стає дією.</strong> У картці виберіть наступний крок і дату. Задача з’явиться в черзі, коли настане її строк. На майбутню дату можна поставити дзвінок, підготовку КП або контакт із партнером.</li>
+          <li class="mb-3"><strong>Підготуйте персональне повідомлення.</strong> Оберіть шаблон комунікації та згенеруйте текст на основі даних компанії. Перечитайте його, за потреби відредагуйте, скопіюйте й надішліть у своєму каналі.</li>
+          <li><strong>Підтвердіть те, що зробили.</strong> Після фактичного надсилання натисніть «Відправлено». Після реальної допомоги позначте компанію партнером і внесіть її обсяг — історія та наступні дії допоможуть підтримувати стосунки.</li>
+        </ol>
+      </div></section>
+
+      <section class="card mb-4"><div class="card-body p-4">
+        <h2 class="h4"><i class="bi bi-chat-heart text-primary me-2"></i>Як писати нотатки, що справді допомагають</h2>
+        <p>Нотатки — для команди: що важливо пам’ятати про контакт, домовленість чи зручний час. Виділіть кольором 1–2 ключові фрази, наприклад термін або обіцянку. Адресу зберігайте в полі адреси картки, щоб її можна було знайти й використати окремо.</p>
+        <p class="mb-0">Пишіть так, щоб колега міг продовжити розмову дбайливо: <em>«Пані Олена просила зателефонувати після 16:00; надіслати коротку пропозицію у Viber».</em></p>
+      </div></section>
+    </div>
+
+    <div class="col-lg-5">
+      <section class="card mb-4"><div class="card-body p-4">
+        <h2 class="h4"><i class="bi bi-toggles text-primary me-2"></i>Налаштування для керівника</h2>
+        <p class="text-muted">Відкрийте <a href="/admin/">адмін-панель</a> під обліковим записом із правами адміністратора.</p>
+        <div class="mb-3"><strong>1. Команди.</strong> У розділі Accounts створіть команду, щоб ліди й робота були розподілені зрозуміло.</div>
+        <div class="mb-3"><strong>2. Користувачі.</strong> Створіть облікові записи, увімкніть доступ до кабінету (Staff status), призначте команду та потрібні ролі. Для роботи оператора через Telegram заповніть його Telegram ID.</div>
+        <div class="mb-3"><strong>3. Джерела та категорії.</strong> У Leads налаштуйте джерела даних і категорії. Перевірте, кому доступне джерело, перш ніж видавати його команді.</div>
+        <div class="mb-3"><strong>4. AI.</strong> У AI налаштуваннях задайте провайдера, ключ і модель. Потім відкрийте <a href="{% url 'manager:templates' %}">«Шаблони комунікацій»</a>: саме активний шаблон задає тип повідомлення, базовий текст і спосіб персоналізації.</div>
+        <div><strong>5. Перевірка.</strong> Створіть тестовий лід, згенеруйте чернетку, перевірте її та переконайтеся, що команда бачить правильні записи й задачі.</div>
+      </div></section>
+
+      <section class="card mb-4"><div class="card-body p-4">
+        <h2 class="h4"><i class="bi bi-telegram text-primary me-2"></i>Підключення Telegram</h2>
+        <ol class="ps-3 mb-0">
+          <li class="mb-2">Створіть бота через BotFather і додайте його токен у змінну <code>BOT_TOKEN</code> у файлі налаштувань запуску.</li>
+          <li class="mb-2">У профілі оператора вкажіть Telegram ID, призначте команду й роль оператора.</li>
+          <li>Запустіть сервіс бота й попросіть оператора надіслати йому <code>/start</code>. Перевірте, що оператор отримує свої ліди.</li>
+        </ol>
+        <div class="alert alert-light border mt-3 mb-0 small">У поточному запуску операторський бот читає один спільний <code>BOT_TOKEN</code> із середовища запуску. Поле токена в картці команди не підмінює цю конфігурацію.</div>
+      </div></section>
+
+      <div class="alert alert-primary border-0"><strong>Добре правило:</strong> після кожної розмови залиште коротку нотатку й конкретну наступну дію. Так турбота команди не залежить від чиєїсь пам’яті.</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
