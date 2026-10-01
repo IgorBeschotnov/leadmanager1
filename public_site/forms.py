@@ -18,13 +18,14 @@ class PartnerContactForm(forms.ModelForm):
 
     class Meta:
         model = Company
-        fields = ["name", "contact_person", "phones", "emails", "city"]
+        fields = ["name", "contact_person", "phones", "emails", "city", "address"]
         labels = {
             "name": "Назва компанії / організації / ім'я",
             "contact_person": "Контактна особа",
             "phones": "Телефон",
             "emails": "Email",
             "city": "Місто",
+            "address": "Адреса (за бажанням)",
         }
         widgets = {
             "name": forms.TextInput(attrs={"placeholder": "Наприклад: ФОП Іваненко або просто ваше ім'я"}),
@@ -32,6 +33,7 @@ class PartnerContactForm(forms.ModelForm):
             "phones": forms.TextInput(attrs={"placeholder": "+380..."}),
             "emails": forms.TextInput(attrs={"placeholder": "you@example.com"}),
             "city": forms.TextInput(attrs={"placeholder": "Місто"}),
+            "address": forms.TextInput(attrs={"placeholder": "Вулиця, будинок"}),
         }
 
     def clean(self):

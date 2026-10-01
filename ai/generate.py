@@ -5,6 +5,49 @@ from .models import AISettings
 from .client import call_chat_completion, AIClientError
 
 
+def generate_communication(company, template, operator) -> str:
+    """Generate a lead-specific message from a managed communication scenario."""
+    settings = AISettings.get_active()
+    if not settings or not settings.api_key:
+        raise AIClientError("Немає активних налаштувань AI або не вказано API Key.")
+    if not template.base_text.strip():
+        raise AIClientError("Базовий текст шаблону порожній.")
+
+    categories = ", ".join(company.categories.values_list("name", flat=True)) or "не вказано"
+    history = list(company.call_logs.order_by("-created_at").values_list("comment", flat=True)[:8])
+    if template.type == "thanks":
+        system = "Пиши українською щирі персональні повідомлення подяки. Не перетворюй подяку на прохання про нову допомогу. Не вигадуй фактів."
+    else:
+        system = settings.system_prompt.strip() or "Пиши персоналізовані ділові повідомлення українською. Не вигадуй фактів."
+    prompt = f"""Підготуй персональне повідомлення для конкретної компанії на основі сценарію.
+
+ТИП: {template.get_type_display()}
+НАЗВА: {template.name}
+ПРИЗНАЧЕННЯ: {template.description or 'не вказано'}
+КАТЕГОРІЯ: {template.category or 'не вказано'}
+ІНСТРУКЦІЯ ПЕРСОНАЛІЗАЦІЇ:
+{template.ai_instruction or 'Адаптуй базовий текст, використовуючи лише наведені факти.'}
+
+БАЗОВИЙ ТЕКСТ / ПРИКЛАД:
+{template.base_text}
+
+ФАКТИ ПРО КОМПАНІЮ:
+Назва: {company.name}
+Контакт: {company.contact_person or 'не вказано'}
+Місто: {company.city or 'не вказано'}
+Напрям діяльності: {categories}
+Нотатки менеджера: {company.internal_notes or 'немає'}
+Історія співпраці: {'; '.join(filter(None, history)) or 'немає записів'}
+Менеджер: {operator.get_full_name() or operator.username}
+
+Використовуй тільки відомі факти, не вигадуй події, обіцянки чи реквізити. Поверни тільки готовий текст."""
+    return call_chat_completion(
+        api_key=settings.api_key, model=settings.model_name,
+        messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+        base_url=settings.api_base_url, temperature=0.35, max_tokens=2200,
+    )
+
+
 CHANNEL_HINTS = {
     "email": "Повне звернення для email. Можна використати структуру з таблицями/списками. До 2000 символів.",
     "telegram": "Коротке повідомлення для Telegram (до 900 символів). Без таблиць, тільки текст.",

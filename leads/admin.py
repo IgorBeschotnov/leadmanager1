@@ -18,7 +18,7 @@ class CallLogInline(admin.TabularInline):
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ("name", "city", "region", "source", "stage", "team", "assigned_to", "updated_at")
+    list_display = ("name", "city", "region", "stage", "next_action", "callback_date", "team", "assigned_to", "updated_at")
     list_filter = ("stage", "team", "region", "source", "categories")
     search_fields = ("name", "phones", "emails", "phone_normalized", "source")
     filter_horizontal = ("categories",)

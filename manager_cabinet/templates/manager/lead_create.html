@@ -52,6 +52,10 @@
               <label class="form-label">Область / регіон</label>
               <input type="text" name="region" class="form-control">
             </div>
+            <div class="col-12">
+              <label class="form-label">Адреса</label>
+              <input type="text" name="address" class="form-control" placeholder="Вулиця, будинок, офіс">
+            </div>
 
             <div class="col-md-6">
               <label class="form-label">Контактна особа</label>
@@ -64,7 +68,15 @@
 
             <div class="col-12">
               <label class="form-label">Внутрішні нотатки</label>
-              <textarea name="internal_notes" class="form-control" rows="2" placeholder="Що важливо знати про цю компанію"></textarea>
+              <div class="note-toolbar" role="group" aria-label="Колір виділення нотаток">
+                <button type="button" class="note-color-button" data-note-color="red" aria-label="Червоний" title="Червоний">A</button>
+                <button type="button" class="note-color-button" data-note-color="orange" aria-label="Помаранчевий" title="Помаранчевий">A</button>
+                <button type="button" class="note-color-button" data-note-color="yellow" aria-label="Жовтий" title="Жовтий">A</button>
+                <button type="button" class="note-color-button" data-note-color="green" aria-label="Зелений" title="Зелений">A</button>
+                <button type="button" class="note-color-button" data-note-color="blue" aria-label="Синій" title="Синій">A</button>
+              </div>
+              <div class="note-editor form-control" contenteditable="true" data-placeholder="Що важливо знати про цю компанію"></div>
+              <input type="hidden" name="internal_notes" class="note-editor-value">
             </div>
           </div>
 
@@ -98,4 +110,30 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const colors = {red:'#c0392b',orange:'#c45b16',yellow:'#947000',green:'#23734b',blue:'#245fbb'};
+  document.querySelectorAll('.note-editor').forEach(function (editor) {
+    const form = editor.closest('form');
+    const hidden = form.querySelector('.note-editor-value');
+    form.querySelectorAll('.note-color-button').forEach(function (button) {
+      button.addEventListener('mousedown', function (event) { event.preventDefault(); });
+      button.addEventListener('click', function () {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !editor.contains(selection.anchorNode)) return;
+        const span = document.createElement('span');
+        span.dataset.noteColor = button.dataset.noteColor;
+        span.style.color = colors[button.dataset.noteColor];
+        try { selection.getRangeAt(0).surroundContents(span); } catch (_) { const range=selection.getRangeAt(0); span.appendChild(range.extractContents()); range.insertNode(span); }
+        selection.removeAllRanges();
+        editor.focus();
+      });
+    });
+    form.addEventListener('submit', function () { hidden.value = editor.innerHTML; });
+  });
+})();
+</script>
 {% endblock %}

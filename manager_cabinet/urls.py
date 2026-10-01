@@ -5,12 +5,13 @@ app_name = "manager"
 
 urlpatterns = [
     path("tasks/", views.tasks, name="tasks"),
+    path("guide/", views.guide, name="guide"),
     path("reports/", views.reports, name="reports"),
     path("database/", views.database, name="database"),
     path("partners/", views.partners, name="partners"),
     path("processed/", views.processed, name="processed"),
     path("templates/", views.templates_list, name="templates"),
-    path("templates/<str:key>/preview/", views.template_preview, name="template_preview"),
+    path("templates/<int:pk>/toggle/", views.template_toggle, name="template_toggle"),
     path("lead/<int:pk>/", views.lead_detail, name="lead_detail"),
     path("operators/", views.operators_list, name="operators"),
     path("operator/<int:pk>/", views.operator_detail, name="operator_detail"),

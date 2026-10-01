@@ -3,35 +3,60 @@
 {% block page_title %}{{ lead.name }}{% endblock %}
 
 {% block content %}
-<div class="mb-3">
+<div class="mb-3 d-flex justify-content-between align-items-center gap-2">
   <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary">
     <i class="bi bi-arrow-left"></i> Назад
   </a>
+  <a href="{% url 'manager:tasks' %}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-list-task"></i> До задач
+  </a>
+</div>
+
+<div class="card lead-header mb-3">
+  <div class="card-body py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+      <div>
+        <div class="page-kicker">КАРТКА ЛІДА</div>
+        <h1 class="h4 mb-2">{{ lead.name }}</h1>
+        <div>
+          <span class="badge badge-stage stage-{{ lead.stage }}">{{ lead.get_stage_display }}</span>
+          {% if lead.preferred_channel %}<span class="badge bg-secondary ms-1">{{ lead.preferred_channel }}</span>{% endif %}
+          {% if lead.source == public_form_source %}<span class="badge bg-info-subtle text-info-emphasis ms-1"><i class="bi bi-globe"></i> З сайту</span>{% endif %}
+        </div>
+      </div>
+      <div class="text-muted small text-md-end">Оновлено {{ lead.updated_at|date:"d.m.Y H:i" }}</div>
+    </div>
+    <div class="mt-2">
+      {% if lead.phones %}
+        <a class="lead-contact-chip" href="tel:{{ lead.phones }}"><i class="bi bi-telephone"></i>{{ lead.phones }}</a>
+      {% endif %}
+      {% if lead.emails %}
+        <a class="lead-contact-chip" href="mailto:{{ lead.emails }}"><i class="bi bi-envelope"></i>{{ lead.emails }}</a>
+      {% endif %}
+      {% if lead.website %}
+        <a class="lead-contact-chip" href="{{ lead.website }}" target="_blank" rel="noopener"><i class="bi bi-globe2"></i>Сайт</a>
+      {% endif %}
+      {% if lead.city %}<span class="lead-contact-chip"><i class="bi bi-geo-alt"></i>{{ lead.city }}</span>{% endif %}
+      {% if lead.address %}<span class="lead-contact-chip"><i class="bi bi-house-door"></i>{{ lead.address }}</span>{% endif %}
+    </div>
+  </div>
 </div>
 
 <div class="row g-3">
   <div class="col-lg-7">
     <div class="card mb-3">
       <div class="card-body">
-        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-          <div>
-            <h5 class="mb-1">{{ lead.name }}</h5>
-            <span class="badge badge-stage stage-{{ lead.stage }}">{{ lead.get_stage_display }}</span>
-            {% if lead.preferred_channel %}
-              <span class="badge bg-secondary ms-1">{{ lead.preferred_channel }}</span>
-            {% endif %}
-            {% if lead.source == public_form_source %}
-              <span class="badge bg-info-subtle text-info-emphasis ms-1"><i class="bi bi-globe"></i> З сайту</span>
-            {% endif %}
-          </div>
-          <div class="text-muted small">
-            Оновлено: {{ lead.updated_at|date:"d.m.Y H:i" }}
-          </div>
-        </div>
-
         <dl class="row mb-0 small">
           <dt class="col-sm-4 text-muted">Місто / регіон</dt>
           <dd class="col-sm-8">{{ lead.city|default:"—" }}{% if lead.region %}, {{ lead.region }}{% endif %}</dd>
+          <dt class="col-sm-4 text-muted">Адреса</dt>
+          <dd class="col-sm-8">
+            <form method="post" class="d-flex gap-2">
+              {% csrf_token %}<input type="hidden" name="action" value="save_address">
+              <input name="address" value="{{ lead.address|default:'' }}" class="form-control form-control-sm" placeholder="Вулиця, будинок, офіс">
+              <button class="btn btn-sm btn-outline-primary" type="submit">Зберегти</button>
+            </form>
+          </dd>
           <dt class="col-sm-4 text-muted">Телефони</dt>
           <dd class="col-sm-8">{{ lead.phones|default:"—" }}</dd>
           <dt class="col-sm-4 text-muted">Email</dt>
@@ -66,7 +91,16 @@
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="action" value="save_notes">
-          <textarea name="internal_notes" class="form-control form-control-sm" rows="4">{{ lead.internal_notes|default:"" }}</textarea>
+          <div class="note-toolbar" role="group" aria-label="Колір виділення нотаток">
+            <button type="button" class="note-color-button" data-note-color="red" aria-label="Червоний" title="Червоний">A</button>
+            <button type="button" class="note-color-button" data-note-color="orange" aria-label="Помаранчевий" title="Помаранчевий">A</button>
+            <button type="button" class="note-color-button" data-note-color="yellow" aria-label="Жовтий" title="Жовтий">A</button>
+            <button type="button" class="note-color-button" data-note-color="green" aria-label="Зелений" title="Зелений">A</button>
+            <button type="button" class="note-color-button" data-note-color="blue" aria-label="Синій" title="Синій">A</button>
+            <span class="small text-muted ms-1">Виділіть слова й оберіть колір</span>
+          </div>
+          <div class="note-editor form-control" contenteditable="true" data-placeholder="Нотатки про компанію">{{ internal_notes_html|safe }}</div>
+          <input type="hidden" name="internal_notes" class="note-editor-value">
           <button type="submit" class="btn btn-sm btn-primary mt-2">Зберегти нотатки</button>
         </form>
       </div>
@@ -94,8 +128,49 @@
 
   <div class="col-lg-5">
 
+    <div class="card next-action action-card mb-3">
+      <div class="card-body">
+        <div class="action-label mb-1"><i class="bi bi-lightning-charge"></i> Наступна дія</div>
+        {% if lead.stage == "new" %}
+          <div class="fw-semibold mb-2">Взяти заявку в опрацювання</div>
+          <div class="small text-muted mb-3">Зафіксуйте результат першого контакту.</div>
+          <a href="#new-lead-action" class="btn btn-info w-100">Взяти в опрацювання <i class="bi bi-arrow-down"></i></a>
+        {% elif lead.stage == "letter_sent" and not lead.is_sent_by_manager %}
+          <div class="fw-semibold mb-2">Підтвердити відправку КП</div>
+          <div class="small text-muted mb-3">Після відправки стартує контрольний період.</div>
+          <a href="#send-confirmation" class="btn btn-warning w-100">Відмітити КП відправленим <i class="bi bi-arrow-down"></i></a>
+        {% elif lead.stage == "success" %}
+          <div class="fw-semibold mb-2">Зафіксувати допомогу партнера</div>
+          <div class="small text-muted mb-3">Внесіть суму або вагу допомоги.</div>
+          <a href="#partner-help" class="btn btn-success w-100">Зафіксувати допомогу <i class="bi bi-arrow-down"></i></a>
+        {% elif lead.stage == "refusal" or lead.stage == "invalid" %}
+          <div class="fw-semibold">Робота з лідом завершена</div>
+          <div class="small text-muted mt-1">Статус: {{ lead.get_stage_display }}</div>
+        {% else %}
+          <div class="fw-semibold mb-2">Продовжити роботу з лідом</div>
+          <div class="small text-muted">Використовуйте блоки нижче для наступної дії.</div>
+        {% endif %}
+        {% if lead.stage != "refusal" and lead.stage != "invalid" and lead.stage != "new" %}
+          <hr>
+          <div class="fw-semibold mb-2"><i class="bi bi-calendar2-check"></i> Наступна дія</div>
+          {% if lead.callback_date %}<div class="small mb-2"><strong>{{ lead.get_next_action_display }}</strong><br>Строк: {{ lead.callback_date|date:"d.m.Y H:i" }}{% if lead.callback_date < now %} <span class="badge text-bg-danger">Прострочено</span>{% endif %}</div>{% elif lead.next_action != "none" %}<div class="small text-muted mb-2">План: {{ lead.get_next_action_display }} · без строку</div>{% else %}<div class="small text-muted mb-2">Наступну дію ще не визначено</div>{% endif %}
+          <form method="post">
+            {% csrf_token %}<input type="hidden" name="action" value="schedule_callback">
+            <label class="form-label small" for="nextAction">Що зробити далі</label>
+            <select class="form-select form-select-sm mb-2" id="nextAction" name="next_action" required>
+              {% for value, label in next_action_options %}<option value="{{ value }}" {% if next_action_value == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+            <label class="form-label small" for="callbackDate">Коли виконати</label>
+            <input class="form-control form-control-sm mb-2" type="datetime-local" id="callbackDate" name="callback_date" value="{{ callback_date_input }}" min="{{ min_callback_date_input }}" required>
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-calendar-plus"></i> Зберегти наступну дію</button>
+          </form>
+          {% if lead.callback_date %}<form method="post" class="mt-2">{% csrf_token %}<input type="hidden" name="action" value="clear_next_action"><button class="btn btn-sm btn-outline-secondary w-100" type="submit">Прибрати строк</button></form>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+
     {% if lead.stage == "new" %}
-    <div class="card mb-3 border-info">
+    <div class="card mb-3 border-info" id="new-lead-action">
       <div class="card-header bg-info-subtle fw-semibold">
         <i class="bi bi-telephone-outbound"></i> Нова заявка
       </div>
@@ -140,7 +215,7 @@
     {% endif %}
 
     {% if lead.stage == "letter_sent" and not lead.is_sent_by_manager %}
-    <div class="card mb-3 border-warning">
+    <div class="card mb-3 border-warning" id="send-confirmation">
       <div class="card-header bg-warning-subtle fw-semibold">
         <i class="bi bi-send"></i> Відмітити відправленим
       </div>
@@ -168,7 +243,7 @@
     {% endif %}
 
     {% if lead.stage == "success" %}
-    <div class="card mb-3 border-success">
+    <div class="card mb-3 border-success" id="partner-help">
       <div class="card-header bg-success-subtle fw-semibold">
         <i class="bi bi-heart"></i> Допомога партнера
       </div>
@@ -192,165 +267,86 @@
     </div>
     {% endif %}
 
-    <!-- AI-генерація КП (один блок) -->
-    <div class="card mb-3 border-primary">
-      <div class="card-header bg-primary-subtle fw-semibold">
-        <i class="bi bi-stars"></i> AI-генерація КП
-      </div>
+    {% if lead.stage == "success" %}
+    <div class="card mb-3 border-success-subtle">
+      <div class="card-header bg-success-subtle fw-semibold"><i class="bi bi-stars"></i> Подяка партнеру</div>
       <div class="card-body">
-        <div class="row g-2 mb-2">
-          <div class="col-6">
-            <label class="form-label small">Канал</label>
-            <select id="aiChannel" class="form-select form-select-sm">
-              <option value="email">Email</option>
-              <option value="telegram">Telegram</option>
-              <option value="viber">Viber</option>
-              <option value="whatsapp">WhatsApp</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <label class="form-label small">Тон</label>
-            <select id="aiTone" class="form-select form-select-sm">
-              <option value="official">Офіційний</option>
-              <option value="emotional">Емоційний</option>
-              <option value="short">Короткий</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <label class="form-label small">Обсяг</label>
-            <select id="aiVolume" class="form-select form-select-sm">
-              <option value="medium">Середній</option>
-              <option value="short">Короткий</option>
-              <option value="full">Повний</option>
-            </select>
-          </div>
-        </div>
-        <button type="button" class="btn btn-primary w-100" id="aiGenerateBtn">
-          <i class="bi bi-magic"></i> Згенерувати
-        </button>
-        <div id="aiError" class="alert alert-danger small mt-2 d-none"></div>
-        <div id="aiResultBox" class="mt-3 d-none">
-          <div class="d-flex justify-content-between mb-2">
-            <span class="small fw-semibold">Результат</span>
-            <button type="button" class="btn btn-sm btn-success" id="aiCopyBtn">
-              <i class="bi bi-clipboard"></i> Копіювати
-            </button>
-          </div>
-          <div class="template-preview" id="aiResultText"></div>
-        </div>
+        <p class="small text-muted">Персоналізація враховує дані партнера та історію співпраці.</p>
+        <select class="form-select mb-2" id="communicationTemplate">
+          {% for t in thanks_templates %}<option value="{{ t.pk }}">{{ t.name }}{% if t.category %} · {{ t.category }}{% endif %}</option>{% empty %}<option value="">Немає активних шаблонів подяки</option>{% endfor %}
+        </select>
+        <button type="button" class="btn btn-success w-100 communication-generate" {% if not thanks_templates %}disabled{% endif %}><i class="bi bi-magic"></i> Підготувати повідомлення</button>
       </div>
     </div>
-
-    <!-- Шаблони КП -->
-    <div class="card mb-3">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <span class="fw-semibold"><i class="bi bi-file-earmark-text"></i> Шаблони КП</span>
-        <a href="{% url 'manager:templates' %}" class="btn btn-sm btn-outline-secondary">Всі шаблони</a>
-      </div>
+    {% else %}
+    <div class="card mb-3 border-primary-subtle">
+      <div class="card-header bg-primary-subtle fw-semibold"><i class="bi bi-stars"></i> Підготувати персональне КП</div>
       <div class="card-body">
-        <div class="d-grid gap-2">
-          {% for t in templates %}
-          <button type="button"
-                  class="btn btn-outline-primary btn-sm text-start template-btn"
-                  data-key="{{ t.key }}"
-                  data-company="{{ lead.pk }}">
-            <div class="fw-semibold">{{ t.name }}</div>
-            <div class="small text-muted">{{ t.channel_hint }}</div>
-          </button>
-          {% endfor %}
-        </div>
-        <div id="previewBox" class="mt-3 d-none">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="small fw-semibold" id="previewTitle">Текст</span>
-            <button type="button" class="btn btn-sm btn-success" id="copyBtn">
-              <i class="bi bi-clipboard"></i> Копіювати
-            </button>
-          </div>
-          <div class="template-preview" id="previewText"></div>
-          <form method="post" class="mt-2" id="logForm">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="generate_and_log">
-            <input type="hidden" name="template_key" id="logTemplateKey">
-            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
-              <i class="bi bi-journal-plus"></i> Додати цей текст в історію ліда
-            </button>
+        <label class="form-label small">Шаблон комунікації</label>
+        <select class="form-select mb-2" id="communicationTemplate">
+          {% for t in proposal_templates %}<option value="{{ t.pk }}">{{ t.name }}{% if t.category %} · {{ t.category }}{% endif %}</option>{% empty %}<option value="">Немає активних шаблонів КП</option>{% endfor %}
+        </select>
+        <div class="small text-muted mb-2">Дані ліда, напрям діяльності й нотатки менеджера будуть передані AI для персоналізації.</div>
+        <button type="button" class="btn btn-primary w-100 communication-generate" {% if not proposal_templates %}disabled{% endif %}><i class="bi bi-magic"></i> Згенерувати КП</button>
+      </div>
+    </div>
+    {% endif %}
+    <div id="communicationError" class="alert alert-danger small d-none"></div>
+    <div class="card mb-3 d-none" id="communicationResult">
+      <div class="card-header fw-semibold">Попередній перегляд · можна редагувати</div>
+      <div class="card-body">
+        <textarea class="form-control" rows="12" id="communicationText"></textarea>
+        <div class="d-flex gap-2 mt-2">
+          <button type="button" class="btn btn-outline-primary flex-fill" id="communicationCopy"><i class="bi bi-clipboard"></i> Скопіювати</button>
+          <form method="post" class="flex-fill" id="communicationSend">{% csrf_token %}
+            <input type="hidden" name="action" value="send_generated_message">
+            <input type="hidden" name="message_id" id="communicationMessageId">
+            <input type="hidden" name="message_body" id="communicationBody">
+            <button class="btn btn-success w-100" type="submit">Відправлено</button>
           </form>
         </div>
       </div>
     </div>
+    {% if generated_messages %}<div class="card mb-3"><div class="card-header">Останні повідомлення</div><ul class="list-group list-group-flush">{% for message in generated_messages %}<li class="list-group-item small"><strong>{{ message.template.name|default:"Шаблон" }}</strong> · {{ message.get_status_display }} · {{ message.created_at|date:"d.m.Y H:i" }}</li>{% endfor %}</ul></div>{% endif %}
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.querySelectorAll('.template-btn').forEach(function (btn) {
-  btn.addEventListener('click', async function () {
-    var key = btn.dataset.key;
-    var companyId = btn.dataset.company;
-    var resp = await fetch(
-      '{% url "manager:template_preview" "PLACEHOLDER" %}'.replace('PLACEHOLDER', key) +
-      '?company_id=' + companyId
-    );
-    var data = await resp.json();
-    if (data.text) {
-      document.getElementById('previewBox').classList.remove('d-none');
-      document.getElementById('previewTitle').textContent = data.name;
-      document.getElementById('previewText').textContent = data.text;
-      document.getElementById('logTemplateKey').value = key;
-      window._lastTemplateText = data.text;
-    }
-  });
-});
-
-document.getElementById('copyBtn') && document.getElementById('copyBtn').addEventListener('click', function () {
-  if (window._lastTemplateText) copyText(window._lastTemplateText);
-});
-
-document.getElementById('aiGenerateBtn').addEventListener('click', async function () {
-  var btn = document.getElementById('aiGenerateBtn');
-  var err = document.getElementById('aiError');
-  var box = document.getElementById('aiResultBox');
-  var textEl = document.getElementById('aiResultText');
-
-  err.classList.add('d-none');
-  err.textContent = '';
-  box.classList.add('d-none');
-  btn.disabled = true;
-  btn.textContent = 'Зачекайте...';
-
-  var fd = new FormData();
-  fd.append('channel', document.getElementById('aiChannel').value);
-  fd.append('tone', document.getElementById('aiTone').value);
-  fd.append('volume', document.getElementById('aiVolume').value);
-  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-
+document.querySelector('.communication-generate')?.addEventListener('click', async function () {
+  const btn = this, error = document.getElementById('communicationError');
+  error.classList.add('d-none'); btn.disabled = true; btn.textContent = 'Генеруємо…';
+  const fd = new FormData(); fd.append('template_id', document.getElementById('communicationTemplate').value); fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
   try {
-    var resp = await fetch('{% url "manager:ai_generate_kp" lead.pk %}', {
-      method: 'POST',
-      body: fd,
-      credentials: 'same-origin'
+    const response = await fetch('{% url "manager:ai_generate_kp" lead.pk %}', {method:'POST', body:fd, credentials:'same-origin'});
+    const data = await response.json();
+    if (!data.ok) throw new Error(data.error || 'Не вдалося згенерувати повідомлення');
+    document.getElementById('communicationText').value = data.text;
+    document.getElementById('communicationMessageId').value = data.message_id;
+    document.getElementById('communicationResult').classList.remove('d-none');
+  } catch (e) { error.textContent = e.message; error.classList.remove('d-none'); }
+  btn.disabled = false; btn.innerHTML = '<i class="bi bi-magic"></i> Згенерувати';
+});
+document.getElementById('communicationCopy')?.addEventListener('click', () => copyText(document.getElementById('communicationText').value));
+document.getElementById('communicationSend')?.addEventListener('submit', () => { document.getElementById('communicationBody').value = document.getElementById('communicationText').value; });
+
+(function () {
+  const colors = {red:'#c0392b',orange:'#c45b16',yellow:'#947000',green:'#23734b',blue:'#245fbb'};
+  document.querySelectorAll('.note-editor').forEach(function (editor) {
+    const form = editor.closest('form'), hidden = form.querySelector('.note-editor-value');
+    form.querySelectorAll('.note-color-button').forEach(function (button) {
+      button.addEventListener('mousedown', function (event) { event.preventDefault(); });
+      button.addEventListener('click', function () {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !editor.contains(selection.anchorNode)) return;
+        const span = document.createElement('span'); span.dataset.noteColor = button.dataset.noteColor; span.style.color = colors[button.dataset.noteColor];
+        try { selection.getRangeAt(0).surroundContents(span); } catch (_) { const range=selection.getRangeAt(0); span.appendChild(range.extractContents()); range.insertNode(span); }
+        selection.removeAllRanges(); editor.focus();
+      });
     });
-    var data = await resp.json();
-    if (data.ok) {
-      textEl.textContent = data.text;
-      box.classList.remove('d-none');
-      window._lastAiText = data.text;
-    } else {
-      err.textContent = data.error || 'Помилка';
-      err.classList.remove('d-none');
-    }
-  } catch (e) {
-    err.textContent = String(e);
-    err.classList.remove('d-none');
-  }
-
-  btn.disabled = false;
-  btn.innerHTML = '<i class="bi bi-magic"></i> Згенерувати';
-});
-
-document.getElementById('aiCopyBtn').addEventListener('click', function () {
-  if (window._lastAiText) copyText(window._lastAiText);
-});
+    form.addEventListener('submit', function () { hidden.value = editor.innerHTML; });
+  });
+})();
 </script>
 {% endblock %}

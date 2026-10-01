@@ -15,6 +15,7 @@ Telegram-бот оператора для leadmanager1.
 
 import os
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 import django
@@ -36,7 +37,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "leadmanager1.settings")
 django.setup()
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import F, Q
+from django.utils import timezone
 from leads.models import Company, CallLog, DataSource
 
 User = get_user_model()
@@ -223,7 +225,9 @@ def send_lead_card(chat_id: int, company: Company, operator_name: str):
         f"👤 **Оператор:** {operator_name}\n"
         f"🏷 **Команда:** {team_name}\n"
         f"🏢 **Компания:** {company.name}\n"
-        f"📍 **Город:** {company.city or 'Не указан'}\n"
+        f"📍 **Адрес:** {company.address or company.city or 'Не указан'}\n"
+        f"➡️ **Следующее действие:** {company.get_next_action_display()}\n"
+        f"🗓 **Срок:** {timezone.localtime(company.callback_date).strftime('%d.%m.%Y %H:%M') if company.callback_date else 'Без срока'}\n"
         f"📞 **Телефон:** `{phone}`"
     )
     bot.send_message(
@@ -306,6 +310,8 @@ def handle_lead_request(message):
             return
         company.stage = "in_progress"
         company.assigned_to = user_obj
+        company.next_action = Company.NextAction.CALL
+        company.callback_date = None
         if not company.team_id:
             company.team = user_obj.team
         company.save()
@@ -319,17 +325,21 @@ def handle_lead_request(message):
     else:
         # Повторний дозвон: тільки ліди СВОЄЇ команди
         # in_progress / letter_sent з callback, або letter_sent вже відправлені
-        from django.utils import timezone
         now = timezone.now()
         company = (
             Company.objects
             .filter(team=user_obj.team)
             .filter(
-                Q(stage="in_progress", assigned_to=user_obj)
-                | Q(stage="in_progress", callback_date__lte=now)
-                | Q(stage="letter_sent", is_sent_by_manager=True)
+                Q(stage="in_progress", assigned_to=user_obj,
+                  next_action=Company.NextAction.CALL, callback_date__isnull=True)
+                | Q(stage__in=["in_progress", "letter_sent", "success"],
+                    callback_date__lte=now,
+                    next_action__in=[Company.NextAction.CALL, Company.NextAction.FOLLOW_UP])
+                | Q(stage="letter_sent", is_sent_by_manager=True,
+                    assigned_to=user_obj, next_action=Company.NextAction.FOLLOW_UP,
+                    callback_date__isnull=True)
             )
-            .order_by("callback_date", "updated_at")
+            .order_by(F("callback_date").asc(nulls_last=True), "updated_at")
             .first()
         )
         if not company:
@@ -422,7 +432,9 @@ def handle_callbacks(call):
 
         if sub_action == "noanswer":
             company.stage = "in_progress"
-            company.save(update_fields=["stage", "updated_at"])
+            company.next_action = Company.NextAction.FOLLOW_UP
+            company.callback_date = timezone.now() + timedelta(days=1)
+            company.save(update_fields=["stage", "next_action", "callback_date", "updated_at"])
             CallLog.objects.create(
                 company=company,
                 operator=user_obj,
@@ -433,7 +445,9 @@ def handle_callbacks(call):
             text_res = f"⚠️ Статус: Нет ответа (на повтор). Оператор: {operator_name}."
         else:
             company.stage = "refusal"
-            company.save(update_fields=["stage", "updated_at"])
+            company.next_action = Company.NextAction.NONE
+            company.callback_date = None
+            company.save(update_fields=["stage", "next_action", "callback_date", "updated_at"])
             CallLog.objects.create(
                 company=company,
                 operator=user_obj,
@@ -510,6 +524,8 @@ def handle_callbacks(call):
         chosen = channel_names.get(channel, channel)
 
         company.stage = "letter_sent"
+        company.next_action = Company.NextAction.PREPARE_PROPOSAL
+        company.callback_date = None
         company.preferred_channel = chosen
         company.is_sent_by_manager = False
         company.save()

@@ -17,6 +17,14 @@ class Category(models.Model):
 
 
 class Company(models.Model):
+    class NextAction(models.TextChoices):
+        CALL = "call", "Зателефонувати"
+        PREPARE_PROPOSAL = "prepare_proposal", "Підготувати й надіслати КП"
+        FOLLOW_UP = "follow_up", "Перевірити відповідь / передзвонити"
+        THANK_PARTNER = "thank_partner", "Подякувати партнеру"
+        CONTACT_PARTNER = "contact_partner", "Зв’язатися з партнером"
+        NONE = "none", "Немає наступної дії"
+
     name = models.CharField(max_length=255, verbose_name="Название компании")
 
     categories = models.ManyToManyField(
@@ -25,6 +33,7 @@ class Company(models.Model):
     )
     city = models.CharField(max_length=100, blank=True, null=True, verbose_name="Город")
     region = models.CharField(max_length=100, blank=True, null=True, verbose_name="Область/регион")
+    address = models.CharField(max_length=500, blank=True, null=True, verbose_name="Адрес")
     website = models.URLField(blank=True, null=True, verbose_name="Сайт")
 
     phones = models.CharField(max_length=500, blank=True, null=True, verbose_name="Телефон(ы)")
@@ -60,6 +69,14 @@ class Company(models.Model):
         blank=True, null=True,
         verbose_name="Дата перезвона",
         help_text="По умолчанию +3 дня после КП; менеджер может менять."
+    )
+
+    next_action = models.CharField(
+        max_length=24,
+        choices=NextAction.choices,
+        default=NextAction.CALL,
+        db_index=True,
+        verbose_name="Наступна дія",
     )
 
     STAGE_CHOICES = [
@@ -133,6 +150,8 @@ class CallLog(models.Model):
     class EventType(models.TextChoices):
         CALL = "call", "Звонок"
         TEMPLATE_GENERATED = "template_generated", "Шаблон сгенерирован"
+        COMMUNICATION_SENT = "communication_sent", "Сообщение отправлено"
+        CALLBACK_SCHEDULED = "callback_scheduled", "Следующий звонок назначен"
         PROPOSAL_SENT = "proposal_sent", "КП отправлено"
         STAGE_CHANGED = "stage_changed", "Смена статуса"
         PARTNER_HELP = "partner_help", "Помощь партнёра"

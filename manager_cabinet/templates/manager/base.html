@@ -71,6 +71,58 @@
     }
     .mobile-bottom-nav a.active, .mobile-bottom-nav a:hover { color: var(--primary); }
     .mobile-bottom-nav i { display: block; font-size: 1.25rem; margin-bottom: 2px; }
+
+    /* CRM UI */
+    .page-intro { margin-bottom: 1rem; }
+    .page-kicker { color: #64748b; font-size: .8rem; }
+    .kpi-card { min-height: 92px; border: 1px solid #e2e8f0; }
+    .kpi-card .kpi-icon {
+      width: 40px; height: 40px; border-radius: .75rem; display: grid;
+      place-items: center; background: #eff6ff; color: var(--primary); font-size: 1.15rem;
+    }
+    .next-action {
+      border: 1px solid #bfdbfe; background: linear-gradient(135deg, #eff6ff, #fff);
+    }
+    .next-action .action-label {
+      text-transform: uppercase; letter-spacing: .06em; font-size: .7rem;
+      font-weight: 700; color: #2563eb;
+    }
+    .action-card { border-left: 4px solid var(--primary); }
+    .lead-header { border: 1px solid #e2e8f0; }
+    .lead-contact-chip {
+      display: inline-flex; align-items: center; gap: .35rem; margin: .2rem .35rem .2rem 0;
+      padding: .35rem .6rem; border: 1px solid #e2e8f0; border-radius: 999px;
+      background: #fff; text-decoration: none; color: #334155;
+    }
+    .lead-contact-chip:hover { border-color: #93c5fd; color: #1d4ed8; background: #eff6ff; }
+    .table > :not(caption) > * > * { padding: .8rem .75rem; }
+    .table thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; color: #64748b; }
+    .lead-row:hover td { background: #f8fafc; }
+    .mobile-only-action { display: none; }
+    .note-toolbar { display: flex; align-items: center; gap: .35rem; margin-bottom: .5rem; flex-wrap: wrap; }
+    .note-color-button { width: 32px; height: 30px; border: 1px solid #dbe2ea; border-radius: .35rem; background: #fff; font-weight: 800; }
+    .note-color-button[data-note-color="red"] { color: #c0392b; }
+    .note-color-button[data-note-color="orange"] { color: #c45b16; }
+    .note-color-button[data-note-color="yellow"] { color: #947000; }
+    .note-color-button[data-note-color="green"] { color: #23734b; }
+    .note-color-button[data-note-color="blue"] { color: #245fbb; }
+    .note-editor { min-height: 120px; white-space: pre-wrap; }
+    .note-editor:empty::before { content: attr(data-placeholder); color: #64748b; }
+    .note-editor [data-note-color="red"] { color: #c0392b !important; }
+    .note-editor [data-note-color="orange"] { color: #c45b16 !important; }
+    .note-editor [data-note-color="yellow"] { color: #947000 !important; }
+    .note-editor [data-note-color="green"] { color: #23734b !important; }
+    .note-editor [data-note-color="blue"] { color: #245fbb !important; }
+
+    @media (max-width: 767.98px) {
+      .mobile-only-action { display: inline-flex; }
+      .page-title-mobile { max-width: 52vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .kpi-card { min-height: 78px; }
+      .kpi-card .kpi-icon { width: 34px; height: 34px; }
+      .table-responsive { border-radius: .5rem; }
+      .topbar { padding: 0 .75rem; }
+      main.p-3 { padding: .75rem !important; }
+    }
     @media (max-width: 991.98px) {
       .mobile-bottom-nav { display: flex; }
       .main-content { padding-bottom: 70px; }
@@ -108,12 +160,17 @@
       </li>
       <li class="nav-item">
         <a class="nav-link {% if page == 'templates' %}active{% endif %}" href="{% url 'manager:templates' %}">
-          <i class="bi bi-file-earmark-text"></i> Шаблони КП
+          <i class="bi bi-file-earmark-text"></i> Шаблони комунікацій
         </a>
       </li>
       <li class="nav-item">
         <a class="nav-link {% if page == 'reports' %}active{% endif %}" href="{% url 'manager:reports' %}">
           <i class="bi bi-bar-chart"></i> Звіти
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if page == 'guide' %}active{% endif %}" href="{% url 'manager:guide' %}">
+          <i class="bi bi-compass"></i> Як це працює
         </a>
       </li>
     </ul>
@@ -127,7 +184,7 @@
         <button class="btn btn-sm btn-outline-secondary d-lg-none" id="menuToggle" type="button">
           <i class="bi bi-list"></i>
         </button>
-        <span class="fw-semibold">{% block page_title %}Кабінет{% endblock %}</span>
+        <span class="fw-semibold page-title-mobile">{% block page_title %}Кабінет{% endblock %}</span>
       </div>
       <div class="d-flex align-items-center gap-3">
         <span class="text-muted small desktop-only">
@@ -148,14 +205,17 @@
     <a href="{% url 'manager:tasks' %}" class="{% if page == 'tasks' %}active{% endif %}">
       <i class="bi bi-list-task"></i>Задачі
     </a>
-    <a href="{% url 'manager:partners' %}" class="{% if page == 'partners' %}active{% endif %}">
-      <i class="bi bi-handshake"></i>Партнери
-    </a>
     <a href="{% url 'manager:database' %}" class="{% if page == 'database' %}active{% endif %}">
       <i class="bi bi-database"></i>База
     </a>
-    <a href="{% url 'manager:templates' %}" class="{% if page == 'templates' %}active{% endif %}">
-      <i class="bi bi-file-earmark-text"></i>Шаблони
+    <a href="{% url 'manager:lead_create' %}" class="mobile-create {% if page == 'lead_create' %}active{% endif %}">
+      <i class="bi bi-plus-circle-fill"></i><strong>+</strong>
+    </a>
+    <a href="{% url 'manager:partners' %}" class="{% if page == 'partners' %}active{% endif %}">
+      <i class="bi bi-handshake"></i>Партнери
+    </a>
+    <a href="{% url 'manager:guide' %}" class="{% if page == 'guide' %}active{% endif %}">
+      <i class="bi bi-compass"></i>Гід
     </a>
   </nav>
 

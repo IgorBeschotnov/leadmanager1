@@ -3,10 +3,21 @@
 {% block page_title %}Звіти{% endblock %}
 
 {% block content %}
+<div class="page-intro">
+  <div class="page-kicker">АНАЛІТИКА</div>
+  <h1 class="h4 mb-1">Звіти</h1>
+  <div class="text-muted small">Результати роботи операторів за останні 30 днів.</div>
+</div>
+
 <div class="row g-3 mb-4">
   <div class="col-12">
     <div class="card">
-      <div class="card-header bg-white fw-semibold">Зведення по операторах (останні 30 днів)</div>
+      <div class="card-header bg-white border-0 py-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">Зведення по операторах</span>
+          <span class="badge bg-light text-dark">30 днів</span>
+        </div>
+      </div>
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0 align-middle">
           <thead class="table-light">
@@ -29,10 +40,10 @@
                 </a>
               </td>
               <td class="text-center fw-semibold">{{ row.total }}</td>
-              <td class="text-center text-success">{{ row.success }}</td>
-              <td class="text-center text-danger">{{ row.refusal }}</td>
-              <td class="text-center text-warning">{{ row.call_back }}</td>
-              <td class="text-center text-muted">{{ row.wrong }}</td>
+              <td class="text-center"><span class="badge bg-success-subtle text-success">{{ row.success }}</span></td>
+              <td class="text-center"><span class="badge bg-danger-subtle text-danger">{{ row.refusal }}</span></td>
+              <td class="text-center"><span class="badge bg-warning-subtle text-warning-emphasis">{{ row.call_back }}</span></td>
+              <td class="text-center"><span class="badge bg-light text-muted">{{ row.wrong }}</span></td>
             </tr>
             {% empty %}
             <tr><td colspan="6" class="text-center text-muted py-4">Немає даних</td></tr>
@@ -45,7 +56,10 @@
 </div>
 
 <div class="card">
-  <div class="card-header bg-white fw-semibold">Стрічка останніх 40 дзвінків</div>
+  <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">Стрічка останніх 40 дзвінків</span>
+    <i class="bi bi-clock-history text-muted"></i>
+  </div>
   <div class="list-group list-group-flush">
     {% for call in recent_calls %}
     <div class="list-group-item list-group-item-action" onclick="location.href='{% url 'manager:lead_detail' call.company_id %}'" style="cursor:pointer">

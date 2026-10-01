@@ -1,72 +1,27 @@
 {% extends "manager/base.html" %}
-{% block title %}Шаблони КП{% endblock %}
-{% block page_title %}Шаблони комерційних пропозицій{% endblock %}
-
+{% block title %}Шаблони комунікацій{% endblock %}
+{% block page_title %}Шаблони комунікацій{% endblock %}
 {% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><div class="page-kicker">СЦЕНАРІЇ ПЕРСОНАЛІЗАЦІЇ</div><h1 class="h4 mb-1">Шаблони комунікацій</h1><p class="text-muted mb-0">Шаблон містить призначення, базовий текст та інструкцію для AI. Кожне повідомлення створюється під конкретного адресата.</p></div><a class="btn btn-primary" href="{% url 'manager:templates' %}">Новий шаблон</a></div>
 <div class="row g-3">
-  {% for key, tpl in full_templates.items %}
-  <div class="col-md-6 col-xl-4">
-    <div class="card h-100">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">{{ tpl.name }}</span>
-        <span class="badge bg-light text-dark border">{{ tpl.channel_hint }}</span>
-      </div>
-      <div class="card-body">
-        <div class="template-preview small" style="max-height:220px">{{ tpl.body }}</div>
-      </div>
-      <div class="card-footer bg-white border-0 pt-0">
-        <button class="btn btn-sm btn-outline-primary w-100"
-                type="button"
-                data-bs-toggle="modal"
-                data-bs-target="#previewModal"
-                data-key="{{ key }}"
-                data-name="{{ tpl.name }}"
-                data-body="{{ tpl.body|escapejs }}">
-          Відкрити / скопіювати
-        </button>
-      </div>
-    </div>
+  <div class="col-lg-7">
+    {% for template in communication_templates %}
+    <div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center"><div><span class="fw-semibold">{{ template.name }}</span> <span class="badge text-bg-light">{{ template.get_type_display }}</span>{% if template.category %} <span class="badge text-bg-secondary">{{ template.category }}</span>{% endif %}</div><span class="badge {% if template.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">{% if template.is_active %}Активний{% else %}Архів{% endif %}</span></div>
+      <div class="card-body"><p>{{ template.description|default:"Без опису" }}</p><details><summary>Інструкція та базовий текст</summary><h6 class="mt-2">Інструкція</h6><pre class="template-preview">{{ template.ai_instruction|default:"Використовуй фактичні дані адресата, не вигадуй фактів." }}</pre><h6>Основа</h6><pre class="template-preview">{{ template.base_text }}</pre>{% if template.example_result %}<h6>Приклад результату</h6><pre class="template-preview">{{ template.example_result }}</pre>{% endif %}</details></div>
+      <div class="card-footer d-flex gap-2"><a class="btn btn-sm btn-outline-primary" href="?edit={{ template.pk }}">Редагувати</a><form method="post" action="{% url 'manager:template_toggle' template.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% if template.is_active %}Архівувати{% else %}Активувати{% endif %}</button></form></div></div>
+    {% empty %}<div class="alert alert-light border">Поки немає шаблонів. Створіть сценарій персоналізації у формі.</div>{% endfor %}
   </div>
-  {% endfor %}
+  <div class="col-lg-5"><div class="card"><div class="card-header fw-semibold">{% if editing %}Редагувати сценарій{% else %}Створити сценарій{% endif %}</div><div class="card-body">
+    <form method="post">{% csrf_token %}{% if editing %}<input type="hidden" name="template_id" value="{{ editing.pk }}">{% endif %}
+      <div class="mb-2"><label class="form-label">Тип комунікації</label><select class="form-select" name="type"><option value="proposal" {% if editing.type == "proposal" %}selected{% endif %}>Комерційна пропозиція</option><option value="thanks" {% if editing.type == "thanks" %}selected{% endif %}>Подяка партнеру</option></select></div>
+      <div class="mb-2"><label class="form-label">Назва</label><input required class="form-control" name="name" value="{{ editing.name|default:'' }}"></div>
+      <div class="mb-2"><label class="form-label">Категорія</label><input class="form-control" name="category" value="{{ editing.category|default:'' }}" placeholder="Наприклад: перше звернення"></div>
+      <div class="mb-2"><label class="form-label">Призначення</label><input class="form-control" name="description" value="{{ editing.description|default:'' }}" placeholder="Коли використовувати цей сценарій"></div>
+      <div class="mb-2"><label class="form-label">Базовий текст</label><textarea required rows="6" class="form-control" name="base_text">{{ editing.base_text|default:'' }}</textarea></div>
+      <div class="mb-2"><label class="form-label">Інструкція персоналізації для AI</label><textarea rows="4" class="form-control" name="ai_instruction">{{ editing.ai_instruction|default:'' }}</textarea></div>
+      <div class="mb-3"><label class="form-label">Приклад готового результату (необов’язково)</label><textarea rows="4" class="form-control" name="example_result">{{ editing.example_result|default:'' }}</textarea></div>
+      <button class="btn btn-primary w-100" type="submit">Зберегти сценарій</button>
+    </form>
+  </div></div></div>
 </div>
-
-<!-- Modal -->
-<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalTitle">Шаблон</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="template-preview" id="modalBody" style="max-height:50vh"></div>
-        <p class="small text-muted mt-2 mb-0">
-          Плейсхолдери: {company_name}, {contact_name}, {operator_name}, {city}.
-          Щоб отримати готовий текст з підставленими даними — відкрийте картку ліда і оберіть шаблон там.
-        </p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-success" id="modalCopyBtn">
-          <i class="bi bi-clipboard"></i> Копіювати текст
-        </button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
-      </div>
-    </div>
-  </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-const modal = document.getElementById('previewModal');
-modal.addEventListener('show.bs.modal', event => {
-  const btn = event.relatedTarget;
-  document.getElementById('modalTitle').textContent = btn.dataset.name;
-  document.getElementById('modalBody').textContent = btn.dataset.body;
-  window._modalText = btn.dataset.body;
-});
-document.getElementById('modalCopyBtn').addEventListener('click', () => {
-  if (window._modalText) copyText(window._modalText);
-});
-</script>
 {% endblock %}

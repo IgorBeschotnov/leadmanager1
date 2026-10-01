@@ -1,9 +1,17 @@
 {% extends "manager/base.html" %}
 {% block title %}База{% endblock %}
-{% block page_title %}База (потребує спілкування){% endblock %}
+{% block page_title %}База лідів{% endblock %}
 
 {% block content %}
-<form class="row g-2 mb-3" method="get">
+<div class="page-intro">
+  <div class="page-kicker">ПОШУК І ФІЛЬТРАЦІЯ</div>
+  <h1 class="h4 mb-1">База лідів</h1>
+  <div class="text-muted small">Знайдіть компанію та відкрийте картку одним натисканням.</div>
+</div>
+
+<form class="card border-0 mb-3" method="get">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
   <div class="col-sm-6 col-md-4">
     <input type="search" name="q" value="{{ search }}" class="form-control form-control-sm" placeholder="Назва / місто">
   </div>
@@ -15,8 +23,16 @@
       <option value="invalid" {% if stage_filter == "invalid" %}selected{% endif %}>Невалідний</option>
     </select>
   </div>
-  <div class="col-auto">
-    <button class="btn btn-sm btn-primary" type="submit">Фільтр</button>
+  <div class="col-sm-6 col-md-4">
+    <select name="next_action" class="form-select form-select-sm">
+      <option value="">Будь-яка наступна дія</option>
+      {% for value, label in next_actions %}<option value="{{ value }}" {% if action_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel"></i> Фільтр</button>
+      </div>
+    </div>
   </div>
 </form>
 
@@ -28,8 +44,10 @@
           <th>Компанія</th>
           <th class="d-none d-md-table-cell">Місто</th>
           <th>Статус</th>
+          <th class="d-none d-md-table-cell">Наступна дія</th>
           <th class="d-none d-lg-table-cell">Оператор</th>
           <th class="d-none d-md-table-cell">Оновлено</th>
+          <th>Строк</th>
         </tr>
       </thead>
       <tbody>
@@ -37,15 +55,17 @@
         <tr class="lead-row" onclick="location.href='{% url 'manager:lead_detail' lead.pk %}'">
           <td>
             <div class="fw-semibold">{{ lead.name }}</div>
-            <div class="small text-muted d-md-none">{{ lead.city|default:"" }}</div>
+            <div class="small text-muted d-md-none">{{ lead.city|default:"—" }} · {{ lead.get_next_action_display }}{% if lead.callback_date %} · {{ lead.callback_date|date:"d.m H:i" }}{% endif %}</div>
           </td>
           <td class="d-none d-md-table-cell">{{ lead.city|default:"—" }}</td>
           <td><span class="badge badge-stage stage-{{ lead.stage }}">{{ lead.get_stage_display }}</span></td>
+          <td class="d-none d-md-table-cell">{{ lead.get_next_action_display }}</td>
           <td class="d-none d-lg-table-cell">{{ lead.assigned_to.name|default:"—" }}</td>
           <td class="d-none d-md-table-cell small text-muted">{{ lead.updated_at|date:"d.m.Y" }}</td>
+          <td class="small">{% if lead.callback_date %}<span class="text-nowrap {% if lead.callback_date < now %}text-danger fw-semibold{% endif %}">{{ lead.callback_date|date:"d.m.Y H:i" }}</span>{% else %}<span class="text-muted">Не заплановано</span>{% endif %}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="5" class="text-center text-muted py-4">Нічого не знайдено</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-5"><i class="bi bi-search fs-3 d-block mb-2"></i>Нічого не знайдено</td></tr>
         {% endfor %}
       </tbody>
     </table>

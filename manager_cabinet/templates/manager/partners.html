@@ -18,7 +18,10 @@
           <th>Компанія</th>
           <th class="d-none d-md-table-cell">Місто</th>
           <th class="d-none d-lg-table-cell">Оператор</th>
-          <th>Дата</th>
+          <th>Наступний контакт</th>
+          <th class="d-none d-lg-table-cell">Остання розмова</th>
+          <th class="d-none d-xl-table-cell">Остання допомога</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -26,14 +29,17 @@
         <tr class="lead-row" onclick="location.href='{% url 'manager:lead_detail' lead.pk %}'">
           <td>
             <div class="fw-semibold">{{ lead.name }}</div>
-            <div class="small text-muted d-md-none">{{ lead.city|default:"" }}</div>
+            <div class="small text-muted d-md-none">{{ lead.city|default:"" }} · {{ lead.get_next_action_display }}</div>
           </td>
           <td class="d-none d-md-table-cell">{{ lead.city|default:"—" }}</td>
           <td class="d-none d-lg-table-cell">{{ lead.assigned_to.name|default:"—" }}</td>
-          <td class="small text-muted">{{ lead.updated_at|date:"d.m.Y" }}</td>
+          <td class="small">{{ lead.get_next_action_display }}{% if lead.callback_date %}<div class="text-muted">{{ lead.callback_date|date:"d.m.Y H:i" }}</div>{% endif %}</td>
+          <td class="d-none d-lg-table-cell small text-muted">{% if lead.contact_history %}{{ lead.contact_history.0.created_at|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+          <td class="d-none d-xl-table-cell small text-muted">{% if lead.help_history %}{{ lead.help_history.0.created_at|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+          <td class="text-end"><a class="btn btn-sm btn-outline-success" onclick="event.stopPropagation()" href="{% url 'manager:lead_detail' lead.pk %}"><i class="bi bi-chat-heart"></i> Комунікація</a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="4" class="text-center text-muted py-4">Поки немає партнерів</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-4">Поки немає партнерів</td></tr>
         {% endfor %}
       </tbody>
     </table>

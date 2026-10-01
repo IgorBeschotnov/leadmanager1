@@ -156,10 +156,10 @@ def import_file(xlsx_path: Path, dry_run: bool, stdout, style):
                     emails=emails,
                     city=city,
                     region=region,
+                    address=address,
                     website=website if website and website.startswith("http") else None,
                     source=source,
                     stage="new",
-                    internal_notes=f"Адреса: {address}" if address else None,
                 )
                 created += 1
             except Exception as e:
